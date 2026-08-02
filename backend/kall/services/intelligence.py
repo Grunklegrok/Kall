@@ -1,0 +1,88 @@
+import re
+from collections import Counter
+from typing import Any
+
+SECTION_NAMES = {
+    "summary", "experience", "employment", "skills", "education", "certifications",
+    "awards", "publications", "projects", "leadership", "professional experience",
+}
+SKILL_TERMS = {
+    "python", "java", "javascript", "typescript", "go", "aws", "azure", "gcp",
+    "docker", "kubernetes", "terraform", "jenkins", "github", "gitlab", "selenium",
+    "playwright", "cypress", "appium", "pytest", "sql", "api", "ci/cd", "devops",
+    "saas", "security", "quality engineering", "machine learning", "artificial intelligence",
+}
+LEADERSHIP_TERMS = {"director", "head", "manager", "lead", "strategy", "organization", "team", "executive"}
+
+
+def _lines(text: str) -> list[str]:
+    return [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+
+
+def _metrics(text: str) -> list[str]:
+    pattern = r"(?:\$\s?\d[\d,.]*|\b\d+(?:\.\d+)?%|\b\d[\d,]*\+?\b)"
+    return list(dict.fromkeys(re.findall(pattern, text)))
+
+
+def parse_resume(text: str) -> tuple[dict[str, Any], list[str]]:
+    lines = _lines(text)
+    sections: dict[str, list[str]] = {"unclassified": []}
+    current = "unclassified"
+    for line in lines:
+        normalized = line.lower().rstrip(":")
+        if normalized in SECTION_NAMES or (len(line) < 40 and line.isupper()):
+            current = normalized
+            sections.setdefault(current, [])
+        else:
+            sections.setdefault(current, []).append(line)
+
+    skills = sorted({term for term in SKILL_TERMS if term in text.lower()})
+    achievements = []
+    for line in lines:
+        if len(line) >= 35 and (_metrics(line) or line.startswith(("Led", "Built", "Created", "Reduced", "Increased", "Improved", "Scaled", "Delivered", "Managed"))):
+            achievements.append({"text": line, "metrics": _metrics(line), "skills": [s for s in skills if s in line.lower()]})
+
+    dates = re.findall(r"\b(?:19|20)\d{2}\b", text)
+    warnings = []
+    if not achievements:
+        warnings.append("No metric-bearing or action-oriented achievements were detected.")
+    if not skills:
+        warnings.append("No known skills were detected; review extracted text.")
+    return {
+        "sections": sections,
+        "skills": skills,
+        "achievements": achievements,
+        "years_mentioned": sorted(set(dates)),
+        "line_count": len(lines),
+    }, warnings
+
+
+def analyze_job(text: str) -> dict[str, list[str]]:
+    lines = _lines(text)
+    lower = text.lower()
+    required, preferred, responsibilities = [], [], []
+    for line in lines:
+        value = line.lower()
+        if any(x in value for x in ("required", "must have", "minimum qualification")):
+            required.append(line)
+        elif any(x in value for x in ("preferred", "nice to have", "bonus")):
+            preferred.append(line)
+        elif any(x in value for x in ("responsible", "you will", "what you'll do", "duties")):
+            responsibilities.append(line)
+    required_skills = sorted({term for term in SKILL_TERMS if term in lower and any(term in item.lower() for item in required)})
+    preferred_skills = sorted({term for term in SKILL_TERMS if term in lower and any(term in item.lower() for item in preferred)})
+    all_skills = sorted({term for term in SKILL_TERMS if term in lower})
+    leadership = sorted({term for term in LEADERSHIP_TERMS if term in lower})
+    words = re.findall(r"[a-z][a-z0-9+.#/-]{2,}", lower)
+    keywords = [word for word, _ in Counter(words).most_common(30) if word not in {"the", "and", "with", "for", "you", "our", "this", "that"}]
+    return {
+        "required_skills": required_skills,
+        "preferred_skills": preferred_skills,
+        "responsibilities": responsibilities[:20],
+        "leadership_signals": leadership,
+        "education_requirements": [line for line in lines if any(x in line.lower() for x in ("degree", "bachelor", "master", "phd"))][:10],
+        "certification_requirements": [line for line in lines if "certif" in line.lower()][:10],
+        "ats_keywords": list(dict.fromkeys(all_skills + keywords))[:40],
+        "explicit_requirements": (required + preferred)[:30],
+        "inferred_signals": [f"Leadership emphasis: {x}" for x in leadership],
+    }
