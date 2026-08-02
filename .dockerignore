@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+!.env.production.example
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+node_modules
+apps/web/.next
+kall.db
+artifacts
+uploads
