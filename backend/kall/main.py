@@ -9,7 +9,7 @@ from kall.api_brief import router as brief_router
 from kall.api_documents import router as documents_router
 from kall.api_intelligence import router as intelligence_router
 from kall.api_match_intelligence import router as match_intelligence_router
-from kall.api_resumes import router as resumes_router
+from kall.api_opportunities import router as opportunities_router
 from kall.api_tailoring import router as tailoring_router
 from kall.config import get_settings
 from kall.db import create_db_and_tables
@@ -27,8 +27,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Kall API",
-    version="0.5.7",
-    description="Career identity, grounded document generation, job discovery, and review-before-submit applications",
+    version="0.7.0",
+    description="Career identity, scheduled opportunity discovery, growth, and review-before-submit applications",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -41,9 +41,9 @@ app.add_middleware(
 app.include_router(router, prefix="/api")
 app.include_router(brief_router, prefix="/api")
 app.include_router(applications_router, prefix="/api")
-app.include_router(resumes_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(intelligence_router, prefix="/api")
 app.include_router(match_intelligence_router, prefix="/api")
 app.include_router(tailoring_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
+app.include_router(opportunities_router, prefix="/api")
