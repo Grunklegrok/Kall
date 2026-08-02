@@ -10,3 +10,4 @@ from kall.models.opportunities import *
 from kall.models.profile import *
 from kall.models.sensitive import *
 from kall.models.tailoring import *
+from kall.models.application_review import *
