@@ -16,6 +16,7 @@ class TestimonialRequest(TimestampMixin, table=True):
     expires_at: datetime | None = None
     sent_at: datetime | None = None
     completed_at: datetime | None = None
+    revoked_at: datetime | None = None
 
 
 class Testimonial(TimestampMixin, table=True):
@@ -33,6 +34,8 @@ class Testimonial(TimestampMixin, table=True):
     include_in_applications: bool = False
     permission_granted: bool = False
     approved_at: datetime | None = None
+    withdrawn_at: datetime | None = None
+    withdrawal_reason: str | None = None
 
 
 class ApplicationTestimonial(TimestampMixin, table=True):
