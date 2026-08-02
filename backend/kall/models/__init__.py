@@ -2,6 +2,7 @@ from kall.models.discovery import *
 from kall.models.auth import *
 from kall.models.core import *
 from kall.models.intelligence import *
+from kall.models.match_intelligence import *
 from kall.models.onboarding import *
 from kall.models.profile import *
 from kall.models.sensitive import *
