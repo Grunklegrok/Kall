@@ -3,20 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from kall.api import router
-from kall.api_application_review import router as application_review_router
-from kall.api_applications import router as applications_router
-from kall.api_brief import router as brief_router
-from kall.api_career_profiles import router as career_profiles_router
-from kall.api_documents import router as documents_router
-from kall.api_intelligence import router as intelligence_router
-from kall.api_match_intelligence import router as match_intelligence_router
-from kall.api_opportunities import router as opportunities_router
-from kall.api_tailoring import router as tailoring_router
-from kall.api_testimonials import router as testimonials_router
 from kall.config import get_settings
 from kall.db import create_db_and_tables
-from kall.profile_api import router as profile_router
+from kall.router_registry import register_api_routers
 
 settings = get_settings()
 
@@ -41,15 +30,4 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(router, prefix="/api")
-app.include_router(brief_router, prefix="/api")
-app.include_router(applications_router, prefix="/api")
-app.include_router(career_profiles_router, prefix="/api")
-app.include_router(application_review_router, prefix="/api")
-app.include_router(testimonials_router, prefix="/api")
-app.include_router(profile_router, prefix="/api")
-app.include_router(intelligence_router, prefix="/api")
-app.include_router(match_intelligence_router, prefix="/api")
-app.include_router(tailoring_router, prefix="/api")
-app.include_router(documents_router, prefix="/api")
-app.include_router(opportunities_router, prefix="/api")
+register_api_routers(app)
