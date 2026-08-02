@@ -1,6 +1,9 @@
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
+
 from kall.models.enums import WorkType
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -9,14 +12,17 @@ class RegisterRequest(BaseModel):
     country: str | None = None
     state_region: str | None = None
 
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
 
 class AuthResponse(BaseModel):
     user_id: int
     access_token: str
     token_type: str = "bearer"
+
 
 class IdentityProfileUpdate(BaseModel):
     preferred_name: str | None = None
@@ -32,6 +38,7 @@ class IdentityProfileUpdate(BaseModel):
     portfolio_urls: list[str] = Field(default_factory=list)
     website_urls: list[str] = Field(default_factory=list)
     professional_summary: str | None = None
+
 
 class ProfessionalProfileCreate(BaseModel):
     name: str
@@ -50,6 +57,7 @@ class ProfessionalProfileCreate(BaseModel):
     target_total_comp: int | None = None
     default_resume_id: int | None = None
 
+
 class JobCreate(BaseModel):
     source: str
     external_id: str | None = None
@@ -66,10 +74,12 @@ class JobCreate(BaseModel):
     salary_max: int | None = None
     posted_at: datetime | None = None
 
+
 class PrepareApplicationRequest(BaseModel):
     job_id: int
     professional_profile_id: int
     resume_id: int | None = None
+
 
 class ApproveApplicationRequest(BaseModel):
     confirmed_sensitive_fields: bool = False
@@ -89,3 +99,20 @@ class ResumeMetadataUpdate(BaseModel):
     industries: list[str] | None = None
     target_titles: list[str] | None = None
     is_default: bool | None = None
+
+
+class LogoutResponse(BaseModel):
+    status: str = "logged_out"
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(min_length=10)
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str

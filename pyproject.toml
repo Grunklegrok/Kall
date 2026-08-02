@@ -1,16 +1,18 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kall-career-platform"
-version = "0.1.0"
+version = "0.3.0"
 description = "Privacy-first career identity and application platform"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.116,<1",
   "uvicorn[standard]>=0.35,<1",
   "sqlmodel>=0.0.24,<1",
+  "alembic>=1.16,<2",
+  "psycopg[binary]>=3.2,<4",
   "pydantic-settings>=2.10,<3",
   "python-multipart>=0.0.20,<1",
   "cryptography>=45,<46",

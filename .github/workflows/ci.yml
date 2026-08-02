@@ -1,15 +1,37 @@
 name: CI
+
 on:
   push:
   pull_request:
+
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: pytest --cov=kall
+      - run: python -m compileall -q backend tests scripts migrations
+      - run: pytest --cov=kall --cov-report=term-missing
+      - run: alembic upgrade head
+        env:
+          APP_ENV: test
+          DATABASE_URL: sqlite:///./ci-kall.db
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run build
