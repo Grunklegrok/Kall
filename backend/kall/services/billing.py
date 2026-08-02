@@ -1,5 +1,13 @@
+from datetime import datetime
+
 from fastapi import HTTPException
+from sqlmodel import Session, func, select
+
 from kall.config import get_settings
+from kall.models import ApplicationUsage, Subscription, User
+
+FREE_APPLICATION_LIMIT = 10
+ACTIVE_STATUSES = {"active", "trialing"}
 
 
 def create_checkout_url(user_id: int) -> str:
@@ -7,12 +15,105 @@ def create_checkout_url(user_id: int) -> str:
     if not all([settings.stripe_secret_key, settings.stripe_price_id]):
         raise HTTPException(status_code=503, detail="Stripe is not configured")
     import stripe
+
     stripe.api_key = settings.stripe_secret_key
-    session = stripe.checkout.Session.create(
+    metadata = {"kall_user_id": str(user_id)}
+    checkout = stripe.checkout.Session.create(
         mode="subscription",
         line_items=[{"price": settings.stripe_price_id, "quantity": 1}],
         success_url=f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.frontend_url}/billing",
         client_reference_id=str(user_id),
+        metadata=metadata,
+        subscription_data={"metadata": metadata},
     )
-    return session.url
+    return checkout.url
+
+
+def create_portal_url(customer_id: str) -> str:
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured")
+    import stripe
+
+    stripe.api_key = settings.stripe_secret_key
+    portal = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=f"{settings.frontend_url}/billing",
+    )
+    return portal.url
+
+
+def get_subscription(session: Session, user_id: int) -> Subscription:
+    item = session.exec(select(Subscription).where(Subscription.user_id == user_id)).first()
+    if item:
+        return item
+    item = Subscription(user_id=user_id)
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
+
+
+def completed_usage(session: Session, user_id: int) -> int:
+    value = session.exec(
+        select(func.coalesce(func.sum(ApplicationUsage.units), 0)).where(
+            ApplicationUsage.user_id == user_id,
+            ApplicationUsage.event == "application_submitted",
+        )
+    ).one()
+    return int(value or 0)
+
+
+def quota_status(session: Session, user: User) -> dict:
+    subscription = get_subscription(session, user.id)
+    used = completed_usage(session, user.id)
+    subscribed = subscription.status in ACTIVE_STATUSES and subscription.plan == "plus"
+    return {
+        "plan": "plus" if subscribed else "free",
+        "subscription_status": subscription.status,
+        "used": used,
+        "free_limit": FREE_APPLICATION_LIMIT,
+        "remaining": None if subscribed else max(FREE_APPLICATION_LIMIT - used, 0),
+        "allowed": subscribed or used < FREE_APPLICATION_LIMIT,
+    }
+
+
+def assert_submission_allowed(session: Session, user: User) -> None:
+    if not quota_status(session, user)["allowed"]:
+        raise ValueError("Free application limit reached; upgrade to Kall Plus")
+
+
+def record_application_submission(session: Session, user_id: int, application_id: int) -> ApplicationUsage:
+    existing = session.exec(
+        select(ApplicationUsage).where(
+            ApplicationUsage.user_id == user_id,
+            ApplicationUsage.application_id == application_id,
+            ApplicationUsage.event == "application_submitted",
+        )
+    ).first()
+    if existing:
+        return existing
+    usage = ApplicationUsage(user_id=user_id, application_id=application_id, event="application_submitted")
+    session.add(usage)
+    session.commit()
+    session.refresh(usage)
+    return usage
+
+
+def apply_subscription_event(session: Session, user_id: int, payload: dict) -> Subscription:
+    item = get_subscription(session, user_id)
+    item.provider_customer_id = payload.get("customer") or item.provider_customer_id
+    item.provider_subscription_id = payload.get("subscription") or payload.get("id") or item.provider_subscription_id
+    item.status = str(payload.get("status", item.status))
+    item.plan = "plus" if item.status in ACTIVE_STATUSES else "free"
+    price = payload.get("price") or {}
+    item.price_id = payload.get("price_id") or price.get("id") or item.price_id
+    period_end = payload.get("current_period_end")
+    if period_end:
+        item.current_period_end = datetime.utcfromtimestamp(int(period_end))
+    item.cancel_at_period_end = bool(payload.get("cancel_at_period_end", False))
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item

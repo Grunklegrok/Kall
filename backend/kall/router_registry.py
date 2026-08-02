@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from kall.api import router
 from kall.api_application_review import router as application_review_router
 from kall.api_applications import router as applications_router
+from kall.api_billing import router as billing_router
 from kall.api_brief import router as brief_router
 from kall.api_career_profiles import router as career_profiles_router
 from kall.api_documents import router as documents_router
@@ -28,6 +29,7 @@ API_ROUTERS = (
     documents_router,
     opportunities_router,
     submissions_router,
+    billing_router,
 )
 
 

@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from kall.auth import get_current_user
 from kall.db import get_session
 from kall.models import Application, ApplicationSubmission, SubmissionAttempt, User
+from kall.services.billing import assert_submission_allowed
 from kall.services.submissions import confirm_submission, create_attempt, prepare_submission, validate_submission
 
 router = APIRouter(tags=["submissions"])
@@ -69,5 +70,9 @@ def attempt(
     item = owned_submission(session, user, submission_id)
     if item.status != "confirmed":
         raise HTTPException(422, "Fresh submission confirmation is required")
+    try:
+        assert_submission_allowed(session, user)
+    except ValueError as exc:
+        raise HTTPException(402, str(exc)) from exc
     # Provider transport remains an adapter boundary. This creates one idempotent attempt only.
     return create_attempt(session, item)
