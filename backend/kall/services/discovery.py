@@ -21,7 +21,9 @@ async def run_discovery(session: Session, user: User, profile: CareerProfile) ->
         professional_profile_id=profile.id,
         providers_requested=sorted({s.provider for s in sources}),
     )
-    session.add(run);session.commit();session.refresh(run)
+    session.add(run)
+    session.commit()
+    session.refresh(run)
     collected=created=matched=0
     errors=[]
     for source in sources:
@@ -34,11 +36,15 @@ async def run_discovery(session: Session, user: User, profile: CareerProfile) ->
             collected += len(jobs)
             for discovered in jobs:
                 normalized=normalize_discovered(discovered)
-                existing=session.exec(select(Job).where(Job.url==normalized["url"])).first()
+                existing=session.exec(select(Job).where(Job.url==normalized["url"])) .first()
                 if existing:
                     job=existing
                 else:
-                    job=Job(**normalized);session.add(job);session.commit();session.refresh(job);created+=1
+                    job=Job(**normalized)
+                    session.add(job)
+                    session.commit()
+                    session.refresh(job)
+                    created+=1
                 existing_match=session.exec(select(JobMatch).where(
                     JobMatch.user_id==user.id,
                     JobMatch.career_profile_id==profile.id,
@@ -51,10 +57,17 @@ async def run_discovery(session: Session, user: User, profile: CareerProfile) ->
                         score=score,strengths=strengths,gaps=gaps,
                         recommendation="apply" if score>=75 else "review" if score>=55 else "pass",
                     )
-                    session.add(match);session.commit();matched+=1
+                    session.add(match)
+                    session.commit()
+                    matched += 1
         except Exception as exc:
             errors.append(f"{source.company_name}/{source.provider}: {exc}")
-    run.completed_at=datetime.utcnow();run.jobs_collected=collected;run.jobs_created=created;run.matches_created=matched
+    run.completed_at = datetime.utcnow()
+    run.jobs_collected = collected
+    run.jobs_created = created
+    run.matches_created = matched
     run.errors=errors;run.status="completed_with_errors" if errors else "completed"
-    session.add(run);session.commit();session.refresh(run)
+    session.add(run)
+    session.commit()
+    session.refresh(run)
     return run
