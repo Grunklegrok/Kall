@@ -1,0 +1,110 @@
+# Kall production deployment
+
+This runbook deploys Kall as three resources: a PostgreSQL database, the FastAPI service, and the Next.js service. The included `render.yaml` is a starting blueprint; equivalent container settings can be used on Railway, Fly.io, AWS, Azure, or Google Cloud.
+
+## 1. Create the services
+
+1. Connect `Grunklegrok/Kall` to the hosting provider.
+2. Create the PostgreSQL database.
+3. Create the API service from `Dockerfile.api`.
+4. Create the web service from `apps/web/Dockerfile`, with `apps/web` as its build context.
+5. Keep automatic deploys enabled only for `main` after CI succeeds.
+
+The API container runs `alembic upgrade head` before starting Uvicorn. It must use a database account permitted to run migrations.
+
+## 2. Configure API secrets
+
+Set every API environment variable listed in `.env.production.example`. Never commit actual keys.
+
+Generate secrets locally:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Use the first value for `APP_SECRET_KEY` and the second for `SENSITIVE_DATA_ENCRYPTION_KEY`.
+
+Start with Stripe test credentials and the Kall Plus test price:
+
+```text
+STRIPE_PRICE_ID=price_1U08lPIjMKrx5dSp2XBsn8to
+```
+
+The Stripe secret key and webhook signing secret must come from the same test-mode account as the price.
+
+## 3. Configure service URLs
+
+Before a custom domain is available, use the provider-generated HTTPS URLs:
+
+```text
+FRONTEND_URL=https://<web-service-host>
+NEXT_PUBLIC_API_URL=https://<api-service-host>
+```
+
+Redeploy the web service after changing `NEXT_PUBLIC_API_URL`, because public Next.js variables can be embedded at build time.
+
+Verify:
+
+```text
+GET https://<api-service-host>/health
+GET https://<api-service-host>/ready
+```
+
+Both endpoints must return HTTP 200 before configuring Stripe.
+
+## 4. Configure the Stripe test webhook
+
+Create or update a test-mode snapshot webhook destination:
+
+```text
+https://<api-service-host>/api/billing/webhook
+```
+
+Enable at least:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid`
+- `invoice.payment_failed`
+
+Copy that destination's `whsec_...` value into `STRIPE_WEBHOOK_SECRET`, then restart the API service. Do not use a Connect thin-event destination for this billing endpoint.
+
+## 5. Sandbox verification
+
+1. Register a new Kall user.
+2. Open Billing and confirm the page shows the free allowance.
+3. Start Checkout and pay with Stripe's test card `4242 4242 4242 4242`.
+4. Confirm Stripe redirects back to Kall.
+5. Confirm the webhook delivery returns 2xx.
+6. Confirm the user becomes Kall Plus in the database/UI.
+7. Open the Customer Portal and verify cancellation and payment-method management.
+8. Confirm repeated webhook delivery does not duplicate usage or subscription records.
+
+Do not switch to live credentials until all eight checks pass.
+
+## 6. Custom domain later
+
+After acquiring a domain, use separate hosts:
+
+```text
+app.<domain>  -> Next.js service
+api.<domain>  -> FastAPI service
+```
+
+Update `FRONTEND_URL`, `NEXT_PUBLIC_API_URL`, Stripe success/cancel URLs through the application configuration, and the Stripe webhook destination. Wait for valid TLS before enabling live event delivery.
+
+## 7. Live-mode cutover
+
+Live mode needs a separate product/price, secret key, and webhook signing secret. Test-mode IDs cannot be mixed with live-mode credentials.
+
+Before cutover:
+
+- create or verify a live `$4/month` Kall Plus price;
+- configure the live Customer Portal;
+- create a live snapshot webhook destination;
+- replace all three Stripe environment variables together;
+- perform one low-risk real transaction and refund it from the Stripe Dashboard;
+- monitor API logs and webhook deliveries.

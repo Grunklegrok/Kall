@@ -10,6 +10,7 @@ from kall.api_documents import router as documents_router
 from kall.api_intelligence import router as intelligence_router
 from kall.api_match_intelligence import router as match_intelligence_router
 from kall.api_opportunities import router as opportunities_router
+from kall.api_ops import router as operations_router
 from kall.api_submissions import router as submissions_router
 from kall.api_tailoring import router as tailoring_router
 from kall.api_testimonials import router as testimonials_router
@@ -34,5 +35,6 @@ API_ROUTERS = (
 
 
 def register_api_routers(app: FastAPI) -> None:
+    app.include_router(operations_router)
     for api_router in API_ROUTERS:
         app.include_router(api_router, prefix="/api")
