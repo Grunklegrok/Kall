@@ -4,37 +4,238 @@ import { FormEvent, useState } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type Score = { resume_id:number; total_score:number; explanation:string[]; gaps:string[] };
+type Score = {
+  resume_id: number;
+  total_score: number;
+  explanation: string[];
+  gaps: string[];
+};
 
-type Result = { scores:Score[]; coverage:Record<string,{covered:number;total:number}>; achievement_matches:Array<{achievement_id:number;score:number;explanation:string[]}>; selection?:{selected_resume_id?:number;recommended_resume_id?:number} };
+type Result = {
+  scores: Score[];
+  coverage: Record<string, { covered: number; total: number }>;
+  achievement_matches: Array<{
+    achievement_id: number;
+    score: number;
+    explanation: string[];
+  }>;
+  selection?: {
+    selected_resume_id?: number;
+    recommended_resume_id?: number;
+  };
+};
 
-export default function JobIntelligencePage(){
-  const [result,setResult]=useState<Result|null>(null);
-  const [message,setMessage]=useState('');
-  async function build(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();
-    const token=localStorage.getItem('kall_token');
-    const form=new FormData(e.currentTarget);
-    const jobId=form.get('job_id');
-    const profileId=form.get('profile_id');
-    const run=await fetch(`${API}/api/jobs/${jobId}/intelligence/${profileId}`,{method:'POST',headers:{Authorization:`Bearer ${token}`}});
-    if(!run.ok){const d=await run.json();setMessage(d.detail||'Unable to build intelligence');return;}
-    const response=await fetch(`${API}/api/jobs/${jobId}/intelligence/${profileId}`,{headers:{Authorization:`Bearer ${token}`}});
-    setResult(await response.json());
-    setMessage('Analysis complete.');
+export default function JobIntelligencePage() {
+  const [result, setResult] = useState<Result | null>(null);
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function build(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsLoading(true);
+    setMessage('Preparing match intelligence…');
+
+    try {
+      const token = localStorage.getItem('kall_token');
+      const form = new FormData(event.currentTarget);
+      const jobId = form.get('job_id');
+      const profileId = form.get('profile_id');
+
+      const run = await fetch(
+        `${API}/api/jobs/${jobId}/intelligence/${profileId}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!run.ok) {
+        const detail = await run.json();
+        setMessage(detail.detail || 'Unable to build intelligence.');
+        return;
+      }
+
+      const response = await fetch(
+        `${API}/api/jobs/${jobId}/intelligence/${profileId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (!response.ok) {
+        setMessage('The analysis ran, but the results could not be loaded.');
+        return;
+      }
+
+      setResult(await response.json());
+      setMessage('Analysis complete.');
+    } catch {
+      setMessage('Kall could not reach the API. Check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }
-  async function selectResume(resumeId:number){
-    const token=localStorage.getItem('kall_token');
-    const job=(document.querySelector('[name=job_id]') as HTMLInputElement).value;
-    const profile=(document.querySelector('[name=profile_id]') as HTMLInputElement).value;
-    await fetch(`${API}/api/jobs/${job}/intelligence/${profile}/selection`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({resume_id:resumeId})});
-    setMessage(`Resume ${resumeId} selected.`);
+
+  async function selectResume(resumeId: number) {
+    const token = localStorage.getItem('kall_token');
+    const job = (
+      document.querySelector('[name=job_id]') as HTMLInputElement
+    ).value;
+    const profile = (
+      document.querySelector('[name=profile_id]') as HTMLInputElement
+    ).value;
+
+    const response = await fetch(
+      `${API}/api/jobs/${job}/intelligence/${profile}/selection`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resume_id: resumeId }),
+      },
+    );
+
+    setMessage(
+      response.ok
+        ? `Resume ${resumeId} is now selected for this opportunity.`
+        : 'Kall could not save the resume selection.',
+    );
   }
-  return <main className='shell'>
-    <header className='topbar'><div className='brand'>Kall Job Intelligence</div><nav><a href='/search'>Search</a><a href='/resume-intelligence'>Resume Intelligence</a></nav></header>
-    <section className='card'><h1>Compare every resume to a job</h1><form className='form' onSubmit={build}><div className='two'><input className='input' name='job_id' placeholder='Job ID' required/><input className='input' name='profile_id' placeholder='Professional profile ID' required/></div><button className='button'>Build match intelligence</button></form><p>{message}</p></section>
-    {result&&<><section className='grid' style={{marginTop:16}}>{Object.entries(result.coverage||{}).map(([key,value])=><article className='card' key={key}><h3>{key.replaceAll('_',' ')}</h3><strong>{value.covered} of {value.total}</strong></article>)}</section>
-    <section style={{marginTop:16}}>{result.scores.map((score,index)=><article className='card' key={score.resume_id} style={{marginBottom:12}}><span className='pill'>{index===0?'Recommended':'Candidate'}</span><h2>Resume {score.resume_id}: {score.total_score}%</h2><p>{score.explanation.join(' · ')||'No positive evidence yet.'}</p><p><strong>Gaps:</strong> {score.gaps.join(', ')||'None detected'}</p><button className='button' onClick={()=>selectResume(score.resume_id)}>Use this resume</button></article>)}</section>
-    <section className='card'><h2>Verified achievement matches</h2><p>{result.achievement_matches.length} verified achievements are relevant to this job. Rejected achievements are excluded.</p></section></>}
-  </main>;
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <a className="brand" href="/">
+          Kall
+        </a>
+        <nav aria-label="Job intelligence navigation">
+          <a href="/search">Opportunities</a>
+          <a href="/resume-intelligence">Resume Studio</a>
+        </nav>
+      </header>
+
+      <section className="hero" style={{ paddingTop: 8, paddingBottom: 42 }}>
+        <span className="eyebrow">Opportunity review</span>
+        <h1 style={{ fontSize: 'clamp(44px, 7vw, 76px)' }}>
+          Compare your experience to the role.
+        </h1>
+        <p>
+          Kall evaluates each resume against the opportunity, explains the
+          evidence behind the score, and keeps the final selection in your
+          control.
+        </p>
+      </section>
+
+      <section className="card" aria-labelledby="analysis-heading">
+        <h2 id="analysis-heading">Build match intelligence</h2>
+        <p style={{ marginBottom: 20 }}>
+          Enter an existing job and professional profile. Kall will compare all
+          eligible resumes and verified achievements.
+        </p>
+        <form className="form" onSubmit={build}>
+          <div className="two">
+            <label>
+              <span className="muted">Job ID</span>
+              <input
+                className="input"
+                name="job_id"
+                inputMode="numeric"
+                placeholder="e.g. 128"
+                required
+              />
+            </label>
+            <label>
+              <span className="muted">Professional profile ID</span>
+              <input
+                className="input"
+                name="profile_id"
+                inputMode="numeric"
+                placeholder="e.g. 42"
+                required
+              />
+            </label>
+          </div>
+          <button className="button" disabled={isLoading}>
+            {isLoading ? 'Preparing analysis…' : 'Build match intelligence'}
+          </button>
+        </form>
+        <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>
+          {message}
+        </p>
+      </section>
+
+      {result && (
+        <div className="stack" style={{ marginTop: 16 }}>
+          <section className="grid" aria-label="Coverage summary">
+            {Object.entries(result.coverage || {}).map(([key, value]) => (
+              <article className="card" key={key}>
+                <h3>{key.replaceAll('_', ' ')}</h3>
+                <div className="metric">
+                  <strong>{value.covered}</strong>
+                  <span className="muted">of {value.total}</span>
+                </div>
+                <p>profile signals covered</p>
+              </article>
+            ))}
+          </section>
+
+          <section aria-labelledby="resume-ranking-heading">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Resume ranking</span>
+                <h2 id="resume-ranking-heading" style={{ marginTop: 14 }}>
+                  Evidence, not guesswork.
+                </h2>
+              </div>
+              <p>
+                Scores are accompanied by positive evidence and visible gaps so
+                you can review the recommendation before acting.
+              </p>
+            </div>
+
+            <div className="stack">
+              {result.scores.map((score, index) => (
+                <article className="card" key={score.resume_id}>
+                  <span className="pill">
+                    {index === 0 ? 'Recommended' : 'Candidate'}
+                  </span>
+                  <div className="metric">
+                    <strong>{score.total_score}%</strong>
+                    <span className="muted">Resume {score.resume_id}</span>
+                  </div>
+                  <p>
+                    {score.explanation.join(' · ') ||
+                      'No positive evidence is available yet.'}
+                  </p>
+                  <p style={{ marginTop: 14 }}>
+                    <strong style={{ color: 'var(--text)' }}>Gaps:</strong>{' '}
+                    {score.gaps.join(', ') || 'None detected'}
+                  </p>
+                  <button
+                    className="button secondary"
+                    style={{ marginTop: 20 }}
+                    onClick={() => selectResume(score.resume_id)}
+                  >
+                    Use this resume
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="card">
+            <span className="eyebrow">Verified evidence</span>
+            <div className="metric">
+              <strong>{result.achievement_matches.length}</strong>
+              <span className="muted">relevant achievements</span>
+            </div>
+            <p>
+              Only verified, accepted achievements are included in this match.
+              Rejected achievements remain excluded.
+            </p>
+          </section>
+        </div>
+      )}
+    </main>
+  );
 }
