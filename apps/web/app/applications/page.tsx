@@ -1,4 +1,5 @@
 import AppNav from '../components/AppNav';
+import styles from './page.module.css';
 
 const stages = [
   {
@@ -20,10 +21,7 @@ const stages = [
       { company: 'Atlas Care', role: 'Director of Software Quality', detail: 'Thursday · 10:00 AM', tone: 'success' },
     ],
   },
-  {
-    title: 'Offer',
-    items: [],
-  },
+  { title: 'Offer', items: [] },
 ];
 
 export default function ApplicationsPage() {
@@ -31,7 +29,7 @@ export default function ApplicationsPage() {
     <main className="app-shell">
       <AppNav current="applications" />
 
-      <section className="workspace-hero">
+      <section className={styles.hero}>
         <div>
           <p className="eyebrow">Application workspace</p>
           <h1>Four active conversations.</h1>
@@ -40,38 +38,38 @@ export default function ApplicationsPage() {
         <a className="button" href="/search">Find opportunities</a>
       </section>
 
-      <section className="application-summary" aria-label="Application summary">
+      <section className={styles.summary} aria-label="Application summary">
         <article><strong>4</strong><span>Active</span></article>
         <article><strong>1</strong><span>Interview</span></article>
         <article><strong>6 days</strong><span>Average response</span></article>
         <article><strong>92%</strong><span>Best match</span></article>
       </section>
 
-      <section className="pipeline" aria-label="Application pipeline">
+      <section className={styles.pipeline} aria-label="Application pipeline">
         {stages.map((stage) => (
-          <section className="pipeline-column" key={stage.title}>
+          <section className={styles.column} key={stage.title}>
             <header>
               <h2>{stage.title}</h2>
               <span>{stage.items.length}</span>
             </header>
-            <div className="pipeline-list">
+            <div className={styles.list}>
               {stage.items.length ? stage.items.map((item) => (
-                <article className="application-card" key={`${item.company}-${item.role}`}>
-                  <span className={`status-dot ${item.tone}`} aria-hidden="true" />
+                <article className={styles.card} key={`${item.company}-${item.role}`}>
+                  <span className={`${styles.dot} ${item.tone === 'accent' ? styles.accent : item.tone === 'success' ? styles.success : ''}`} aria-hidden="true" />
                   <p>{item.company}</p>
                   <h3>{item.role}</h3>
                   <span>{item.detail}</span>
                   <a href="/job-intelligence">Open application</a>
                 </article>
               )) : (
-                <div className="pipeline-empty">No applications here.</div>
+                <div className={styles.empty}>No applications here.</div>
               )}
             </div>
           </section>
         ))}
       </section>
 
-      <section className="application-focus calm-panel">
+      <section className={`${styles.focus} calm-panel`}>
         <div>
           <p className="eyebrow">Next decision</p>
           <h2>Northstar Health is ready for review.</h2>
@@ -80,7 +78,7 @@ export default function ApplicationsPage() {
         <a className="button" href="/job-intelligence">Review preparation</a>
       </section>
 
-      <p className="preview-note">Preview application data is shown until the application pipeline API is connected.</p>
+      <p className={styles.note}>Preview application data is shown until the application pipeline API is connected.</p>
     </main>
   );
 }
