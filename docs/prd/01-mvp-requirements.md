@@ -13,6 +13,20 @@ Sign in → Onboarding → Career Profile → Resume Studio → Morning Brief �
 
 ## Implemented Alpha Modules
 
+### Integrated Onboarding
+
+Purpose: move a new user from account creation to a useful, grounded Morning Brief without routing them through disconnected legacy screens.
+
+Required behavior:
+
+- Create the account and persist the authenticated session.
+- Guide the user through one initial Career Profile with target roles, work modes, geography, keywords, and compensation preferences.
+- Offer a factual resume upload using the existing Resume Studio ingestion contract.
+- Allow resume upload to be skipped without blocking access to Kall.
+- Summarize which foundation records were created before entering the Morning Brief.
+- Send users to Career Profiles or Resume Studio when skipped setup remains incomplete.
+- Never claim that profile analysis, opportunity matching, or resume readiness exists until supported records are stored.
+
 ### Morning Brief
 
 Purpose: provide a calm, personalized starting point that answers what deserves attention today.
