@@ -64,3 +64,8 @@ The application quota service allows 10 completed applications on the free plan.
 ## Repository status
 
 This is a coherent MVP foundation. ATS-specific submission connectors are intentionally limited to a safe provider interface and a mock connector. Real provider adapters must be implemented only where the provider permits automated submission.
+
+
+## Kall Search milestone
+
+This release adds configurable Greenhouse, Lever and Ashby sources, normalized job ingestion, URL deduplication, salary/work-style inference, professional-profile matching, ranked feed APIs, and web pages for sources, profiles, jobs and application preparation.

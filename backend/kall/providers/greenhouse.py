@@ -1,0 +1,36 @@
+import html
+import httpx
+from kall.providers.jobs import DiscoveredJob
+
+
+class GreenhouseProvider:
+    name = "greenhouse"
+
+    def __init__(self, client: httpx.AsyncClient | None = None):
+        self.client = client
+
+    async def collect(self, company_name: str, board_key: str) -> list[DiscoveredJob]:
+        owns_client = self.client is None
+        client = self.client or httpx.AsyncClient(timeout=20)
+        try:
+            response = await client.get(
+                f"https://boards-api.greenhouse.io/v1/boards/{board_key}/jobs",
+                params={"content": "true"},
+            )
+            response.raise_for_status()
+            rows=[]
+            for item in response.json().get("jobs", []):
+                rows.append(DiscoveredJob(
+                    source=self.name,
+                    external_id=str(item.get("id")) if item.get("id") is not None else None,
+                    company=company_name,
+                    title=item.get("title", ""),
+                    description=html.unescape(item.get("content", "")),
+                    url=item.get("absolute_url", ""),
+                    location=(item.get("location") or {}).get("name"),
+                    metadata={"departments": item.get("departments", []), "offices": item.get("offices", [])},
+                ))
+            return rows
+        finally:
+            if owns_client:
+                await client.aclose()

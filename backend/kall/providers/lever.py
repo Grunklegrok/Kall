@@ -1,0 +1,29 @@
+import httpx
+from kall.providers.jobs import DiscoveredJob
+
+
+class LeverProvider:
+    name = "lever"
+
+    def __init__(self, client: httpx.AsyncClient | None = None):
+        self.client = client
+
+    async def collect(self, company_name: str, board_key: str) -> list[DiscoveredJob]:
+        owns_client = self.client is None
+        client = self.client or httpx.AsyncClient(timeout=20)
+        try:
+            response = await client.get(f"https://api.lever.co/v0/postings/{board_key}", params={"mode":"json"})
+            response.raise_for_status()
+            return [DiscoveredJob(
+                source=self.name,
+                external_id=item.get("id"),
+                company=company_name,
+                title=item.get("text", ""),
+                description=item.get("descriptionPlain") or item.get("description", ""),
+                url=item.get("hostedUrl", ""),
+                location=(item.get("categories") or {}).get("location"),
+                metadata={"team": (item.get("categories") or {}).get("team")},
+            ) for item in response.json()]
+        finally:
+            if owns_client:
+                await client.aclose()

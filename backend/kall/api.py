@@ -3,11 +3,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, select
 from kall.auth import create_session, get_current_user, password_hash, verify_password
 from kall.db import get_session
-from kall.models import Application, CandidateProfile, CareerProfile, Job, JobMatch, ResumeDocument, User, UserCredential
-from kall.schemas import ApproveApplicationRequest, AuthResponse, IdentityProfileUpdate, JobCreate, LoginRequest, PrepareApplicationRequest, ProfessionalProfileCreate, RegisterRequest
+from kall.models import Application, CandidateProfile, CareerProfile, Job, JobMatch, ResumeDocument, SearchRun, SearchSource, User, UserCredential
+from kall.schemas import ApproveApplicationRequest, AuthResponse, IdentityProfileUpdate, JobCreate, LoginRequest, PrepareApplicationRequest, ProfessionalProfileCreate, RegisterRequest, ResumeMetadataUpdate, SearchSourceCreate
 from kall.security import encrypt_sensitive
 from kall.services.applications import approve_application, prepare_application
 from kall.services.billing import create_checkout_url
+from kall.services.discovery import run_discovery
 from kall.services.matching import deterministic_match
 from kall.services.resume import extract_resume_text
 router=APIRouter()
@@ -86,3 +87,49 @@ def approve(application_id:int,payload:ApproveApplicationRequest,current_user:Us
 
 @router.post('/billing/checkout')
 def checkout(current_user:User=Depends(get_current_user)): return {'url':create_checkout_url(current_user.id)}
+
+
+@router.patch('/me/resumes/{resume_id}',response_model=ResumeDocument)
+def update_resume_metadata(resume_id:int,payload:ResumeMetadataUpdate,current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    row=session.get(ResumeDocument,resume_id)
+    if not row or row.user_id!=current_user.id: raise HTTPException(404,'Resume not found')
+    for key,value in payload.model_dump(exclude_unset=True).items(): setattr(row,key,value)
+    if payload.is_default:
+        for other in session.exec(select(ResumeDocument).where(ResumeDocument.user_id==current_user.id)):
+            if other.id!=row.id: other.is_default=False;session.add(other)
+    session.add(row);session.commit();session.refresh(row);return row
+
+@router.post('/me/search-sources',response_model=SearchSource)
+def add_search_source(payload:SearchSourceCreate,current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    if payload.provider not in {'greenhouse','lever','ashby'}: raise HTTPException(422,'Unsupported provider')
+    row=SearchSource(user_id=current_user.id,**payload.model_dump());session.add(row);session.commit();session.refresh(row);return row
+
+@router.get('/me/search-sources',response_model=list[SearchSource])
+def list_search_sources(current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    return list(session.exec(select(SearchSource).where(SearchSource.user_id==current_user.id)))
+
+@router.post('/discovery/run/{professional_profile_id}',response_model=SearchRun)
+async def discovery_run(professional_profile_id:int,current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    profile=session.get(CareerProfile,professional_profile_id)
+    if not profile or profile.user_id!=current_user.id: raise HTTPException(404,'Professional profile not found')
+    return await run_discovery(session,current_user,profile)
+
+@router.get('/jobs/feed')
+def jobs_feed(professional_profile_id:int,min_score:int=0,current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    profile=session.get(CareerProfile,professional_profile_id)
+    if not profile or profile.user_id!=current_user.id: raise HTTPException(404,'Professional profile not found')
+    rows=session.exec(select(JobMatch,Job).join(Job,JobMatch.job_id==Job.id).where(
+        JobMatch.user_id==current_user.id,
+        JobMatch.career_profile_id==professional_profile_id,
+        JobMatch.score>=min_score,
+    ).order_by(JobMatch.score.desc())).all()
+    return [{
+        'match_id':match.id,'job_id':job.id,'score':match.score,'recommendation':match.recommendation,
+        'strengths':match.strengths,'gaps':match.gaps,'company':job.company,'title':job.title,
+        'location':job.location,'work_type':job.work_type,'salary_min':job.salary_min,'salary_max':job.salary_max,
+        'url':job.url,'source':job.source,
+    } for match,job in rows]
+
+@router.get('/discovery/runs',response_model=list[SearchRun])
+def discovery_runs(current_user:User=Depends(get_current_user),session:Session=Depends(get_session)):
+    return list(session.exec(select(SearchRun).where(SearchRun.user_id==current_user.id).order_by(SearchRun.created_at.desc())))

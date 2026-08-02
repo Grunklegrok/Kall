@@ -74,3 +74,18 @@ class PrepareApplicationRequest(BaseModel):
 class ApproveApplicationRequest(BaseModel):
     confirmed_sensitive_fields: bool = False
     confirmed_answers: bool = False
+
+
+class SearchSourceCreate(BaseModel):
+    provider: str
+    company_name: str
+    board_key: str
+    enabled: bool = True
+
+
+class ResumeMetadataUpdate(BaseModel):
+    name: str | None = None
+    tags: list[str] | None = None
+    industries: list[str] | None = None
+    target_titles: list[str] | None = None
+    is_default: bool | None = None

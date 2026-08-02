@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "kall-career-platform"
@@ -28,12 +28,16 @@ dependencies = [
 dev = [
   "pytest>=8.4,<9",
   "pytest-cov>=6.2,<7",
+  "pytest-asyncio>=1.0,<2",
   "ruff>=0.12,<1",
   "mypy>=1.17,<2"
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["backend/kall"]
+[tool.setuptools]
+package-dir = {"" = "backend"}
+
+[tool.setuptools.packages.find]
+where = ["backend"]
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
