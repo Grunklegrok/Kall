@@ -12,3 +12,4 @@ from kall.models.sensitive import *
 from kall.models.tailoring import *
 from kall.models.application_review import *
 from kall.models.testimonials import *
+from kall.models.submissions import *
