@@ -6,3 +6,4 @@ from kall.models.match_intelligence import *
 from kall.models.onboarding import *
 from kall.models.profile import *
 from kall.models.sensitive import *
+from kall.models.tailoring import *
