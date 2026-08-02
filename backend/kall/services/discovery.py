@@ -66,7 +66,8 @@ async def run_discovery(session: Session, user: User, profile: CareerProfile) ->
     run.jobs_collected = collected
     run.jobs_created = created
     run.matches_created = matched
-    run.errors=errors;run.status="completed_with_errors" if errors else "completed"
+    run.errors = errors
+    run.status = "completed_with_errors" if errors else "completed"
     session.add(run)
     session.commit()
     session.refresh(run)
