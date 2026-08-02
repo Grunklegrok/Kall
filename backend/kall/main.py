@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from kall.api import router
 from kall.config import get_settings
 from kall.db import create_db_and_tables
+from kall.profile_api import router as profile_router
 
 settings = get_settings()
 
@@ -19,8 +20,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Kall API",
-    version="0.3.0",
-    description="Identity, professional profiles, job discovery, and review-before-submit applications",
+    version="0.4.0",
+    description="Career identity, onboarding, professional profiles, job discovery, and review-before-submit applications",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -31,3 +32,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router, prefix="/api")
+app.include_router(profile_router, prefix="/api")
