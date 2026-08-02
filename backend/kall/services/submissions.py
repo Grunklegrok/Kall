@@ -25,13 +25,11 @@ def checksum(payload: object) -> str:
 
 def build_preview(session: Session, application: Application) -> tuple[dict, dict[str, str]]:
     job = session.get(Job, application.job_id)
-    documents = list(session.exec(
-        select(GeneratedDocument).where(
-            GeneratedDocument.user_id == application.user_id,
-            GeneratedDocument.job_id == application.job_id,
-            GeneratedDocument.status == "finalized",
-        )
-    ))
+    documents = list(session.exec(select(GeneratedDocument).where(
+        GeneratedDocument.user_id == application.user_id,
+        GeneratedDocument.job_id == application.job_id,
+        GeneratedDocument.status == "finalized",
+    )))
     document_checksums = {item.document_type: item.checksum for item in documents}
     preview = {
         "application_id": application.id,
@@ -59,19 +57,13 @@ def prepare_submission(session: Session, application: Application) -> Applicatio
         session.commit()
         session.refresh(existing)
         return existing
-    item = ApplicationSubmission(
-        user_id=application.user_id,
-        application_id=application.id,
-        provider=provider,
-        status="awaiting_confirmation",
-        preview_json=preview,
-        preview_checksum=checksum(preview),
-        document_checksums=document_checksums,
-        approval_snapshot_at=application.user_approved_at,
-        manual_url=preview["job"]["url"],
-    )
+    item = ApplicationSubmission(user_id=application.user_id, application_id=application.id, provider=provider,
+        status="awaiting_confirmation", preview_json=preview, preview_checksum=checksum(preview),
+        document_checksums=document_checksums, approval_snapshot_at=application.user_approved_at,
+        manual_url=preview["job"]["url"])
     session.add(item)
-    session.add(SubmissionAudit(submission_id=0, user_id=application.user_id, event="preview_prepared", details={"provider": provider}))
+    session.flush()
+    session.add(SubmissionAudit(submission_id=item.id, user_id=application.user_id, event="preview_prepared", details={"provider": provider}))
     session.commit()
     session.refresh(item)
     return item
@@ -92,10 +84,9 @@ def validate_submission(session: Session, submission: ApplicationSubmission) -> 
         issues.append("Approved preview or documents changed")
     if application.unanswered_questions:
         issues.append("Required screening questions remain unanswered")
-    if application.sensitive_fields_present and not review.sensitive_fields_confirmed:
+    if application.sensitive_fields_present and (not review or not review.sensitive_fields_confirmed):
         issues.append("Sensitive fields require confirmation")
-    provider = submission.provider.lower()
-    if provider not in SUPPORTED_PROVIDERS:
+    if submission.provider.lower() not in SUPPORTED_PROVIDERS:
         issues.append("Connector is unsupported; manual completion required")
     if application.prepared_payload.get("captcha_required"):
         issues.append("Manual CAPTCHA completion required")
@@ -107,7 +98,7 @@ def validate_submission(session: Session, submission: ApplicationSubmission) -> 
 def confirm_submission(session: Session, submission: ApplicationSubmission) -> ApplicationSubmission:
     issues = validate_submission(session, submission)
     if issues:
-        submission.status = "needs_manual_completion" if any("manual" in issue.lower() or "unsupported" in issue.lower() for issue in issues) else "blocked"
+        submission.status = "needs_manual_completion" if any("manual" in x.lower() or "unsupported" in x.lower() for x in issues) else "blocked"
         submission.failure_code = "validation_failed"
         submission.failure_detail = "; ".join(issues)
     else:
