@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kall-career-platform"
+version = "0.1.0"
+description = "Privacy-first career identity and application platform"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "uvicorn[standard]>=0.35,<1",
+  "sqlmodel>=0.0.24,<1",
+  "pydantic-settings>=2.10,<3",
+  "python-multipart>=0.0.20,<1",
+  "cryptography>=45,<46",
+  "httpx>=0.28,<1",
+  "python-docx>=1.2,<2",
+  "pypdf>=5.9,<6",
+  "openai>=1.99,<2",
+  "stripe>=12,<13",
+  "email-validator>=2.2,<3",
+  "jinja2>=3.1,<4",
+  "pyyaml>=6,<7"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.2,<7",
+  "ruff>=0.12,<1",
+  "mypy>=1.17,<2"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/kall"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

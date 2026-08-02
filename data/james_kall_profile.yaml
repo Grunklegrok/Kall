@@ -1,0 +1,105 @@
+user:
+  email: jdshattuck@gmail.com
+  full_name: James Shattuck
+  country: United States
+  state_region: Washington
+
+candidate_profile:
+  city: Vancouver
+  state_region: Washington
+  country: United States
+  professional_summary: >
+    Strategic software quality engineering leader with more than 15 years of experience
+    across SaaS, FinTech, IoT, embedded, cloud, aviation, mobile, web, and data platforms.
+    Has scaled global quality organizations from zero to more than 40 engineers, increased
+    automation coverage to 80%, accelerated release velocity by 66%, and supported 99%
+    uptime across fleets exceeding 100,000 connected devices.
+  website_urls: []
+  portfolio_urls: []
+
+career_profiles:
+  - name: Quality Engineering Leadership
+    target_titles:
+      - Director of Quality Engineering
+      - Director of Software Quality
+      - Head of Quality Engineering
+      - Senior Manager of Quality Engineering
+      - Director of Engineering Excellence
+      - Director of Test Engineering
+      - Head of Development Operations
+    industries:
+      - SaaS
+      - FinTech
+      - IoT
+      - Cloud
+      - Cybersecurity
+      - Developer Tools
+      - Enterprise Software
+    functional_areas:
+      - Quality Engineering
+      - Engineering Leadership
+      - DevSecOps
+      - Release Engineering
+      - Engineering Excellence
+    include_keywords:
+      - automation strategy
+      - CI/CD
+      - engineering leadership
+      - quality transformation
+      - cloud
+      - SaaS
+      - AI-assisted testing
+      - embedded systems
+      - mobile
+      - API testing
+    exclude_keywords:
+      - junior
+      - manual tester
+      - analyst
+      - laboratory
+      - manufacturing quality
+    countries:
+      - United States
+    states_regions:
+      - Oregon
+      - Washington
+    work_types:
+      - remote
+      - hybrid
+      - on_site
+    minimum_base: 180000
+    target_base: 220000
+    stretch_base: 250000
+    minimum_total_comp: 220000
+    target_total_comp: 300000
+
+education:
+  - institution: College of San Mateo
+    degree: Computer Science
+    graduation_date: 2002-06-01
+    gpa: 3.7
+    country: United States
+    state_region: California
+
+skills:
+  - {name: Selenium, category: Test Automation}
+  - {name: Appium, category: Test Automation}
+  - {name: Cypress, category: Test Automation}
+  - {name: Playwright, category: Test Automation}
+  - {name: Pytest, category: Test Automation}
+  - {name: TradeFed, category: Embedded and Android Testing}
+  - {name: AWS, category: Cloud}
+  - {name: Azure DevOps, category: DevOps}
+  - {name: Jenkins, category: CI/CD}
+  - {name: Terraform, category: Infrastructure}
+  - {name: Docker, category: Infrastructure}
+  - {name: GitLab, category: CI/CD}
+  - {name: GitHub, category: CI/CD}
+  - {name: Datadog, category: Observability}
+  - {name: Sentry, category: Observability}
+  - {name: Python, category: Programming}
+  - {name: JavaScript, category: Programming}
+  - {name: Java, category: Programming}
+  - {name: Go, category: Programming}
+  - {name: API Testing, category: Quality Engineering}
+  - {name: AI-assisted Quality Engineering, category: Artificial Intelligence}
