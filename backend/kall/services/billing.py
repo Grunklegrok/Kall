@@ -17,13 +17,15 @@ def create_checkout_url(user_id: int) -> str:
     import stripe
 
     stripe.api_key = settings.stripe_secret_key
+    metadata = {"kall_user_id": str(user_id)}
     checkout = stripe.checkout.Session.create(
         mode="subscription",
         line_items=[{"price": settings.stripe_price_id, "quantity": 1}],
         success_url=f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.frontend_url}/billing",
         client_reference_id=str(user_id),
-        metadata={"kall_user_id": str(user_id)},
+        metadata=metadata,
+        subscription_data={"metadata": metadata},
     )
     return checkout.url
 
@@ -102,10 +104,11 @@ def record_application_submission(session: Session, user_id: int, application_id
 def apply_subscription_event(session: Session, user_id: int, payload: dict) -> Subscription:
     item = get_subscription(session, user_id)
     item.provider_customer_id = payload.get("customer") or item.provider_customer_id
-    item.provider_subscription_id = payload.get("id") or item.provider_subscription_id
+    item.provider_subscription_id = payload.get("subscription") or payload.get("id") or item.provider_subscription_id
     item.status = str(payload.get("status", item.status))
     item.plan = "plus" if item.status in ACTIVE_STATUSES else "free"
-    item.price_id = payload.get("price_id") or item.price_id
+    price = payload.get("price") or {}
+    item.price_id = payload.get("price_id") or price.get("id") or item.price_id
     period_end = payload.get("current_period_end")
     if period_end:
         item.current_period_end = datetime.utcfromtimestamp(int(period_end))
