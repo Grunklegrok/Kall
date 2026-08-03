@@ -13,11 +13,20 @@ down_revision = "20260802_0004"
 branch_labels = None
 depends_on = None
 
+TAILORING_TABLE_NAMES = (
+    "tailoringproposal",
+    "tailoringchange",
+    "tailoringaudit",
+)
+
 
 def upgrade() -> None:
-    SQLModel.metadata.create_all(bind=op.get_bind())
+    bind = op.get_bind()
+    for table_name in TAILORING_TABLE_NAMES:
+        SQLModel.metadata.tables[table_name].create(bind=bind, checkfirst=True)
 
 
 def downgrade() -> None:
-    for table in ("tailoringaudit", "tailoringchange", "tailoringproposal"):
-        op.drop_table(table)
+    bind = op.get_bind()
+    for table_name in reversed(TAILORING_TABLE_NAMES):
+        SQLModel.metadata.tables[table_name].drop(bind=bind, checkfirst=True)
