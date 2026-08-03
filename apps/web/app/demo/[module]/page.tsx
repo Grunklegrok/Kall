@@ -71,12 +71,17 @@ const demos = {
 
 type DemoKey = keyof typeof demos;
 
+type DemoPageProps = {
+  params: Promise<{ module: string }>;
+};
+
 export function generateStaticParams() {
   return Object.keys(demos).map((module) => ({ module }));
 }
 
-export default function DemoPage({ params }: { params: { module: string } }) {
-  const demo = demos[params.module as DemoKey];
+export default async function DemoPage({ params }: DemoPageProps) {
+  const { module } = await params;
+  const demo = demos[module as DemoKey];
   if (!demo) notFound();
 
   return (
