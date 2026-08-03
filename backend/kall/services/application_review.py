@@ -1,7 +1,5 @@
 from datetime import datetime
 
-from sqlmodel import Session, select
-
 from kall.models import (
     Application,
     ApplicationAnswer,
@@ -9,6 +7,7 @@ from kall.models import (
     ApplicationReviewAudit,
     ScreeningQuestion,
 )
+from sqlmodel import Session, select
 
 SENSITIVE_CATEGORIES = {"eeo", "work_authorization", "disability", "veteran", "demographic"}
 

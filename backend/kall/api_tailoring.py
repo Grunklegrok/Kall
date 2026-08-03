@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from kall.auth import get_current_user

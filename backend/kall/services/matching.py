@@ -1,4 +1,5 @@
 import re
+
 from kall.models.core import CareerProfile, Job
 
 
@@ -19,7 +20,7 @@ def deterministic_match(job: Job, profile: CareerProfile) -> tuple[int, list[str
         strengths.append(f"Industry alignment: {industry_hits[0]}")
 
     keyword_hits = [k for k in profile.include_keywords if k.lower() in text]
-    score += min(30, len(keyword_hits) * 5)
+    score += min(30, len(keyword_hits) * 10)
     strengths.extend(f"Relevant: {k}" for k in keyword_hits[:4])
 
     excluded = [k for k in profile.exclude_keywords if k.lower() in text]

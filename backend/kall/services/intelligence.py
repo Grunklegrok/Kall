@@ -39,13 +39,13 @@ def parse_resume(text: str) -> tuple[dict[str, Any], list[str]]:
     skills = sorted({term for term in SKILL_TERMS if term in text.lower()})
     achievements = []
     for line in lines:
-        if len(line) >= 35 and (_metrics(line) or line.startswith(("Led", "Built", "Created", "Reduced", "Increased", "Improved", "Scaled", "Delivered", "Managed"))):
+        if len(line) >= 35 and _metrics(line):
             achievements.append({"text": line, "metrics": _metrics(line), "skills": [s for s in skills if s in line.lower()]})
 
     dates = re.findall(r"\b(?:19|20)\d{2}\b", text)
     warnings = []
     if not achievements:
-        warnings.append("No metric-bearing or action-oriented achievements were detected.")
+        warnings.append("No metric-bearing achievements were detected.")
     if not skills:
         warnings.append("No known skills were detected; review extracted text.")
     return {

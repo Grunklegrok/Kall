@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from sqlmodel import Field
+
 from kall.models.core import TimestampMixin
 
 

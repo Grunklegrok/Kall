@@ -1,6 +1,6 @@
-from sqlmodel import Session, select
 from kall.models.core import FieldPrivacy
 from kall.models.enums import PrivacyScope
+from sqlmodel import Session, select
 
 
 def field_allowed(session: Session, user_id: int, field_path: str, scope: PrivacyScope) -> bool:

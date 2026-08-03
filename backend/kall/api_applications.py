@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
@@ -35,7 +35,7 @@ def _iso(value: datetime | None) -> str | None:
     if not value:
         return None
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
     return value.isoformat()
 
 
@@ -127,5 +127,5 @@ def applications_pipeline(
             for key, label in _STAGE_LABELS.items()
         ],
         "next_decision": next_decision,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }

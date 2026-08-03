@@ -1,11 +1,10 @@
 from logging.config import fileConfig
 
+import kall.models  # noqa: F401
 from alembic import context
+from kall.config import get_settings
 from sqlalchemy import engine_from_config, pool, text
 from sqlmodel import SQLModel
-
-from kall.config import get_settings
-import kall.models  # noqa: F401
 
 config = context.config
 settings = get_settings()

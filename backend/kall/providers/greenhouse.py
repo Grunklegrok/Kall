@@ -1,4 +1,5 @@
 import html
+
 import httpx
 from kall.providers.jobs import DiscoveredJob
 

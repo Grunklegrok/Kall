@@ -134,8 +134,8 @@ def profile_card_testimonials(user: User = Depends(get_current_user), session: S
     return list(session.exec(select(Testimonial).where(
         Testimonial.user_id == user.id,
         Testimonial.status == "approved",
-        Testimonial.permission_granted == True,
-        Testimonial.include_on_profile == True,
+        Testimonial.permission_granted,
+        Testimonial.include_on_profile,
     )))
 
 

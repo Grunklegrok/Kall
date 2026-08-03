@@ -1,4 +1,5 @@
 from typing import Protocol
+
 from kall.models.core import Application
 
 

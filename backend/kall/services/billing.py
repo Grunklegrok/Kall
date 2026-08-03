@@ -1,10 +1,9 @@
 from datetime import datetime
 
 from fastapi import HTTPException
-from sqlmodel import Session, func, select
-
 from kall.config import get_settings
 from kall.models import ApplicationUsage, Subscription, User
+from sqlmodel import Session, func, select
 
 FREE_APPLICATION_LIMIT = 10
 ACTIVE_STATUSES = {"active", "trialing"}

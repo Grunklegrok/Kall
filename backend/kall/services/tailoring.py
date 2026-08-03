@@ -1,8 +1,6 @@
 import re
 from datetime import datetime
 
-from sqlmodel import Session, select
-
 from kall.models import (
     Achievement,
     Job,
@@ -13,6 +11,7 @@ from kall.models import (
     TailoringChange,
     TailoringProposal,
 )
+from sqlmodel import Session, select
 
 IMMUTABLE_PATTERN = re.compile(r"\b(?:19|20)\d{2}\b|\b\d+(?:\.\d+)?%\b|\$\d[\d,]*(?:\.\d+)?[KMB]?\b", re.I)
 

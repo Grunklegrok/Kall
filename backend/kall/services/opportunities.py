@@ -3,18 +3,16 @@ import re
 from collections import Counter
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, select
-
 from kall.models import (
+    CareerGoal,
     DiscoverySchedule,
-    GrowthGoal,
     GrowthMarketSignal,
     Job,
     JobRequirementAnalysis,
     NotificationDelivery,
-    NotificationPreference,
     Opportunity,
 )
+from sqlmodel import Session, select
 
 
 def normalize(value: str | None) -> str:
@@ -104,7 +102,7 @@ def queue_digest(session: Session, user_id: int, opportunity_ids: list[int]) -> 
     return delivery
 
 
-def analyze_growth_market(session: Session, goal: GrowthGoal, analyses: list[JobRequirementAnalysis]) -> GrowthMarketSignal:
+def analyze_growth_market(session: Session, goal: CareerGoal, analyses: list[JobRequirementAnalysis]) -> GrowthMarketSignal:
     skills: Counter[str] = Counter()
     requirements: Counter[str] = Counter()
     for analysis in analyses:

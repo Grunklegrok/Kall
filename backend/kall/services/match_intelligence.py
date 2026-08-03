@@ -1,8 +1,6 @@
 import re
 from collections import Counter
-from datetime import datetime, timezone
-
-from sqlmodel import Session, delete, select
+from datetime import UTC, datetime
 
 from kall.models import (
     Achievement,
@@ -16,6 +14,7 @@ from kall.models import (
     ResumeParse,
     ResumeSelection,
 )
+from sqlmodel import Session, delete, select
 
 SCORING_VERSION = "resume-match-v1"
 ACHIEVEMENT_SCORING_VERSION = "achievement-match-v1"
@@ -88,7 +87,7 @@ def rank_resumes(
         skills_score = min(35, round(35 * len(covered) / max(1, len(requirement_tokens))))
         leadership_terms = {"director", "head", "lead", "manager", "strategy", "executive", "team"}
         leadership_score = min(10, _overlap(resume_tokens, leadership_terms & job_tokens) * 2)
-        current_year = datetime.now(timezone.utc).year
+        current_year = datetime.now(UTC).year
         years = [int(value) for value in re.findall(r"\b(20\d{2})\b", text)]
         recency_score = 10 if years and max(years) >= current_year - 2 else 5 if years else 0
 

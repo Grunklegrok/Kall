@@ -1,11 +1,12 @@
 from datetime import datetime
-from sqlmodel import Session, select
+
 from kall.models import CareerProfile, Job, JobMatch, SearchRun, SearchSource, User
 from kall.providers.ashby import AshbyProvider
 from kall.providers.greenhouse import GreenhouseProvider
 from kall.providers.lever import LeverProvider
 from kall.services.matching import deterministic_match
 from kall.services.normalization import normalize_discovered
+from sqlmodel import Session, select
 
 PROVIDERS={
     "greenhouse": GreenhouseProvider,
@@ -15,7 +16,7 @@ PROVIDERS={
 
 
 async def run_discovery(session: Session, user: User, profile: CareerProfile) -> SearchRun:
-    sources=list(session.exec(select(SearchSource).where(SearchSource.user_id==user.id, SearchSource.enabled==True)))
+    sources = list(session.exec(select(SearchSource).where(SearchSource.user_id == user.id, SearchSource.enabled)))
     run=SearchRun(
         user_id=user.id,
         professional_profile_id=profile.id,

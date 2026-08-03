@@ -1,5 +1,6 @@
 import hashlib
 import re
+
 from kall.models.enums import WorkType
 from kall.providers.jobs import DiscoveredJob
 from kall.services.matching import salary_from_text

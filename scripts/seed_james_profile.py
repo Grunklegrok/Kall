@@ -1,8 +1,9 @@
 from pathlib import Path
+
 import yaml
-from sqlmodel import Session
 from kall.db import create_db_and_tables, engine
 from kall.models import CandidateProfile, CareerProfile, Education, Skill, User
+from sqlmodel import Session
 
 
 def main() -> None:

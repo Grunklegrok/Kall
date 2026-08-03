@@ -1,13 +1,27 @@
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlmodel import SQLModel
-
+from fastapi.routing import APIRoute
 from kall.main import app
 from kall.router_registry import API_ROUTERS
+from sqlmodel import SQLModel
+
+
+def _app_paths() -> set[str]:
+    """Return all registered route paths, including those in included sub-routers."""
+    paths: set[str] = set()
+    for r in app.routes:
+        if isinstance(r, APIRoute):
+            paths.add(r.path)
+        elif hasattr(r, "include_context") and hasattr(r, "original_router"):
+            prefix = r.include_context.prefix or ""
+            for sub in r.original_router.routes:
+                if isinstance(sub, APIRoute):
+                    paths.add(prefix + sub.path)
+    return paths
 
 
 def test_router_registry_is_complete() -> None:
-    paths = {route.path for route in app.routes}
+    paths = _app_paths()
     expected = {
         "/api/testimonials/requests",
         "/api/testimonials/profile-card",

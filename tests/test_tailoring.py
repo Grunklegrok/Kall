@@ -1,8 +1,7 @@
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
-
 from kall.models import TailoringChange, TailoringProposal
 from kall.services.tailoring import finalize_proposal, preserves_immutable_facts, review_change
+from sqlmodel import Session, SQLModel, create_engine
 
 
 def test_immutable_metrics_and_dates_are_preserved() -> None:

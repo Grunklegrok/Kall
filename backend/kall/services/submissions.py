@@ -2,8 +2,6 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, select
-
 from kall.models import (
     Application,
     ApplicationReview,
@@ -13,6 +11,7 @@ from kall.models import (
     SubmissionAttempt,
     SubmissionAudit,
 )
+from sqlmodel import Session, select
 
 SUPPORTED_PROVIDERS = {"greenhouse", "lever", "ashby"}
 APPROVAL_MAX_AGE = timedelta(minutes=30)

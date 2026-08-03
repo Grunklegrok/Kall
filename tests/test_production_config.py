@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from kall.config import Settings
+from pydantic import ValidationError
 
 
 def test_production_rejects_default_secret() -> None:

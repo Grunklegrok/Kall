@@ -1,7 +1,7 @@
 from fastapi import HTTPException
-from sqlmodel import Session
 from kall.models.core import User
 from kall.models.enums import SubscriptionPlan
+from sqlmodel import Session
 
 FREE_COMPLETED_APPLICATION_LIMIT = 10
 

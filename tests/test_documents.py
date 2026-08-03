@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
-
 from kall.models import Job, TailoringChange, TailoringProposal, User
 from kall.services.documents import finalized_resume_content, generate_resume_documents
+from sqlmodel import Session, SQLModel, create_engine
 
 
 def test_finalized_content_excludes_rejected_changes() -> None:

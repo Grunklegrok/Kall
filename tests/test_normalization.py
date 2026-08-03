@@ -1,6 +1,6 @@
-from kall.providers.jobs import DiscoveredJob
-from kall.services.normalization import fingerprint, infer_work_type, normalize_discovered
 from kall.models.enums import WorkType
+from kall.providers.jobs import DiscoveredJob
+from kall.services.normalization import fingerprint, normalize_discovered
 
 
 def test_fingerprint_ignores_tracking_query():
