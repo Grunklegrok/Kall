@@ -4,9 +4,180 @@ import { useEffect, useState } from 'react';
 import AppNav from '../components/AppNav';
 import styles from './page.module.css';
 
-const API=process.env.NEXT_PUBLIC_API_URL||'http://localhost:8000';
-type Resume={id:number;name:string;version:number;tags:string[];industries:string[];target_titles:string[];updated_at:string;readiness:{score:number;checks:Record<string,boolean>}};
-type Profile={id:number;name:string;target_titles:string[];default_resume_id:number|null};
-type Studio={resumes:Resume[];profiles:Profile[]};
+const API = '/api/kall';
 
-export default function ResumeStudioPage(){const[data,setData]=useState<Studio|null>(null);const[message,setMessage]=useState('');const[loading,setLoading]=useState(true);async function load(){const token=localStorage.getItem('kall_token');if(!token){setMessage('Sign in to open your resume library.');setLoading(false);return;}try{const r=await fetch(`${API}/api/me/resume-studio`,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('Unable to load Resume Studio');setData(await r.json());}catch(e){setMessage(e instanceof Error?e.message:'Unable to load Resume Studio');}finally{setLoading(false)}}useEffect(()=>{load()},[]);async function assign(profileId:number,resumeId:number|null){const token=localStorage.getItem('kall_token');const r=await fetch(`${API}/api/me/professional-profiles/${profileId}/default-resume`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({resume_id:resumeId})});setMessage(r.ok?'Default resume updated.':'Unable to update the profile resume.');if(r.ok)await load();}return <main className={styles.shell}><AppNav current='documents'/><section className={styles.hero}><div><p className='eyebrow'>Resume Studio</p><h1>Your career documents, organized by purpose.</h1><p>Review readiness, maintain versions, and choose the starting resume for each career strategy.</p></div><a className='button' href='/onboarding'>Upload resume</a></section>{loading?<section className={styles.state}>Loading your library…</section>:message&&!data?<section className={styles.state}><p>{message}</p><a className='button' href='/login'>Sign in</a></section>:data&&<><section className={styles.summary}><article><strong>{data.resumes.length}</strong><span>Resumes</span></article><article><strong>{data.profiles.length}</strong><span>Career profiles</span></article><article><strong>{data.resumes.filter(r=>r.readiness.score>=80).length}</strong><span>Ready</span></article></section><section className={styles.grid}><div><div className={styles.heading}><h2>Resume library</h2><span>{message}</span></div>{data.resumes.length?<div className={styles.list}>{data.resumes.map(r=><article className={styles.card} key={r.id}><div><p>Version {r.version}</p><h3>{r.name}</h3><span>Updated {new Date(r.updated_at).toLocaleDateString()}</span></div><div className={styles.score}><strong>{r.readiness.score}</strong><span>readiness</span></div><div className={styles.checks}>{Object.entries(r.readiness.checks).map(([k,v])=><span key={k} className={v?styles.complete:''}>{v?'✓':'○'} {k.replaceAll('_',' ')}</span>)}</div></article>)}</div>:<section className={styles.state}><h2>No resumes yet.</h2><p>Upload a resume to begin building a reusable document library.</p><a className='button' href='/onboarding'>Upload your first resume</a></section>}</div><aside className={styles.profiles}><h2>Profile defaults</h2>{data.profiles.length?data.profiles.map(p=><article key={p.id}><h3>{p.name}</h3><p>{p.target_titles.join(', ')||'No target titles yet'}</p><select value={p.default_resume_id??''} onChange={e=>assign(p.id,e.target.value?Number(e.target.value):null)}><option value=''>No default resume</option>{data.resumes.map(r=><option value={r.id} key={r.id}>{r.name}</option>)}</select></article>):<p className='muted'>Create a career profile to assign a default resume.</p>}</aside></section></>}</main>}
+type Resume = {
+  id: number;
+  name: string;
+  version: number;
+  tags: string[];
+  industries: string[];
+  target_titles: string[];
+  updated_at: string;
+  readiness: { score: number; checks: Record<string, boolean> };
+};
+
+type Profile = {
+  id: number;
+  name: string;
+  target_titles: string[];
+  default_resume_id: number | null;
+};
+
+type Studio = { resumes: Resume[]; profiles: Profile[] };
+
+async function responseMessage(response: Response, fallback: string) {
+  try {
+    const body = await response.json();
+    return body.detail || body.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export default function ResumeStudioPage() {
+  const [data, setData] = useState<Studio | null>(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function requireToken() {
+    const token = localStorage.getItem('kall_token');
+    if (!token) {
+      window.location.replace('/login');
+      return null;
+    }
+    return token;
+  }
+
+  async function load() {
+    const token = requireToken();
+    if (!token) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API}/me/resume-studio`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(await responseMessage(response, 'Unable to load Resume Studio.'));
+      }
+
+      setData(await response.json());
+      setMessage('');
+    } catch (error) {
+      setData(null);
+      setMessage(error instanceof Error ? error.message : 'Unable to load Resume Studio.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function assign(profileId: number, resumeId: number | null) {
+    const token = requireToken();
+    if (!token) return;
+
+    const response = await fetch(
+      `${API}/me/professional-profiles/${profileId}/default-resume`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resume_id: resumeId }),
+      },
+    );
+
+    if (response.status === 401) {
+      localStorage.removeItem('kall_token');
+      window.location.replace('/login');
+      return;
+    }
+
+    setMessage(
+      response.ok
+        ? 'Default resume updated.'
+        : await responseMessage(response, 'Unable to update the profile resume.'),
+    );
+    if (response.ok) await load();
+  }
+
+  return (
+    <main className={styles.shell}>
+      <AppNav current="documents" />
+      <section className={styles.hero}>
+        <div>
+          <p className="eyebrow">Resume Studio</p>
+          <h1>Your career documents, organized by purpose.</h1>
+          <p>
+            Review readiness, maintain versions, and choose the starting resume
+            for each career strategy.
+          </p>
+        </div>
+        <a className="button" href="/onboarding">Upload resume</a>
+      </section>
+
+      {loading ? (
+        <section className={styles.state}>Loading your library…</section>
+      ) : message && !data ? (
+        <section className={styles.state}>
+          <p>{message}</p>
+          <button className="button" onClick={() => void load()}>Try again</button>
+        </section>
+      ) : data ? (
+        <>
+          <section className={styles.summary}>
+            <article><strong>{data.resumes.length}</strong><span>Resumes</span></article>
+            <article><strong>{data.profiles.length}</strong><span>Career profiles</span></article>
+            <article><strong>{data.resumes.filter((resume) => resume.readiness.score >= 80).length}</strong><span>Ready</span></article>
+          </section>
+          <section className={styles.grid}>
+            <div>
+              <div className={styles.heading}><h2>Resume library</h2><span>{message}</span></div>
+              {data.resumes.length ? (
+                <div className={styles.list}>
+                  {data.resumes.map((resume) => (
+                    <article className={styles.card} key={resume.id}>
+                      <div><p>Version {resume.version}</p><h3>{resume.name}</h3><span>Updated {new Date(resume.updated_at).toLocaleDateString()}</span></div>
+                      <div className={styles.score}><strong>{resume.readiness.score}</strong><span>readiness</span></div>
+                      <div className={styles.checks}>
+                        {Object.entries(resume.readiness.checks).map(([key, complete]) => (
+                          <span key={key} className={complete ? styles.complete : ''}>{complete ? '✓' : '○'} {key.replaceAll('_', ' ')}</span>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <section className={styles.state}><h2>No resumes yet.</h2><p>Upload a resume to begin building a reusable document library.</p><a className="button" href="/onboarding">Upload your first resume</a></section>
+              )}
+            </div>
+            <aside className={styles.profiles}>
+              <h2>Profile defaults</h2>
+              {data.profiles.length ? data.profiles.map((profile) => (
+                <article key={profile.id}>
+                  <h3>{profile.name}</h3>
+                  <p>{profile.target_titles.join(', ') || 'No target titles yet'}</p>
+                  <select value={profile.default_resume_id ?? ''} onChange={(event) => void assign(profile.id, event.target.value ? Number(event.target.value) : null)}>
+                    <option value="">No default resume</option>
+                    {data.resumes.map((resume) => <option value={resume.id} key={resume.id}>{resume.name}</option>)}
+                  </select>
+                </article>
+              )) : <p className="muted">Create a career profile to assign a default resume.</p>}
+            </aside>
+          </section>
+        </>
+      ) : null}
+    </main>
+  );
+}
