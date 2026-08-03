@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
 const API = '/api/kall';
 
@@ -15,76 +16,50 @@ type Opportunity = {
 
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
+  const [profileId, setProfileId] = useState('');
   const [message, setMessage] = useState('');
 
   async function load(state = '') {
     const token = localStorage.getItem('kall_token');
-    if (!token) {
-      window.location.replace('/login');
-      return;
-    }
-    const response = await fetch(`${API}/opportunities${state ? `?state=${state}` : ''}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (response.status === 401) {
-      localStorage.removeItem('kall_token');
-      window.location.replace('/login');
-      return;
-    }
-    if (response.ok) {
-      setItems(await response.json());
-      setMessage('');
-    } else {
-      setMessage('Unable to load opportunities.');
-    }
+    if (!token) { window.location.replace('/login'); return; }
+    const response = await fetch(`${API}/opportunities${state ? `?state=${state}` : ''}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (response.status === 401) { localStorage.removeItem('kall_token'); window.location.replace('/login'); return; }
+    if (response.ok) { setItems(await response.json()); setMessage(''); } else { setMessage('Unable to load opportunities.'); }
   }
 
   useEffect(() => { void load(); }, []);
 
   async function changeState(id: number, state: string) {
     const token = localStorage.getItem('kall_token');
-    if (!token) {
-      window.location.replace('/login');
-      return;
-    }
+    if (!token) { window.location.replace('/login'); return; }
     const response = await fetch(`${API}/opportunities/${id}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ state }),
     });
-    if (response.status === 401) {
-      localStorage.removeItem('kall_token');
-      window.location.replace('/login');
-      return;
-    }
+    if (response.status === 401) { localStorage.removeItem('kall_token'); window.location.replace('/login'); return; }
     setMessage(response.ok ? 'Opportunity updated.' : 'Unable to update opportunity.');
     if (response.ok) await load();
   }
 
   async function saveSchedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profileId) { setMessage('Create or select a professional profile first.'); return; }
     const token = localStorage.getItem('kall_token');
-    if (!token) {
-      window.location.replace('/login');
-      return;
-    }
+    if (!token) { window.location.replace('/login'); return; }
     const form = new FormData(event.currentTarget);
     const response = await fetch(`${API}/discovery/schedules`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        professional_profile_id: Number(form.get('profile_id')),
+        professional_profile_id: Number(profileId),
         cadence: form.get('cadence'),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         hour_local: Number(form.get('hour_local')),
         max_posting_age_days: Number(form.get('age_days')),
       }),
     });
-    if (response.status === 401) {
-      localStorage.removeItem('kall_token');
-      window.location.replace('/login');
-      return;
-    }
+    if (response.status === 401) { localStorage.removeItem('kall_token'); window.location.replace('/login'); return; }
     setMessage(response.ok ? 'Discovery schedule saved.' : 'Unable to save schedule.');
   }
 
@@ -92,9 +67,7 @@ export default function OpportunitiesPage() {
     <main className="shell">
       <header className="topbar">
         <a className="brand" href="/">Kall</a>
-        <nav aria-label="Opportunity navigation">
-          <a href="/growth">Growth</a><a href="/job-intelligence">Intelligence</a><a href="/documents">Documents</a>
-        </nav>
+        <nav aria-label="Opportunity navigation"><a href="/growth">Growth</a><a href="/job-intelligence">Intelligence</a><a href="/documents">Documents</a></nav>
       </header>
 
       <section className="hero" style={{ paddingTop: 8, paddingBottom: 42 }}>
@@ -107,14 +80,14 @@ export default function OpportunitiesPage() {
         <h2>Schedule discovery</h2>
         <form className="form" onSubmit={saveSchedule}>
           <div className="two">
-            <input className="input" name="profile_id" inputMode="numeric" placeholder="Professional profile ID" required />
-            <select className="input" name="cadence" defaultValue="daily"><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option></select>
+            <ProfessionalProfileSelect value={profileId} onChange={setProfileId} />
+            <label><span className="muted">Cadence</span><select className="input" name="cadence" defaultValue="daily"><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option></select></label>
           </div>
           <div className="two">
-            <input className="input" name="hour_local" type="number" min="0" max="23" defaultValue="8" />
-            <input className="input" name="age_days" type="number" min="1" max="90" defaultValue="30" />
+            <label><span className="muted">Local hour</span><input className="input" name="hour_local" type="number" min="0" max="23" defaultValue="8" /></label>
+            <label><span className="muted">Maximum posting age</span><input className="input" name="age_days" type="number" min="1" max="90" defaultValue="30" /></label>
           </div>
-          <button className="button">Save schedule</button>
+          <button className="button" disabled={!profileId}>Save schedule</button>
         </form>
         <p className="notice" aria-live="polite">{message}</p>
       </section>
