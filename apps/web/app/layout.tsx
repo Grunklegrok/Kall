@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import OpportunitiesAtsSearch from './components/OpportunitiesAtsSearch';
 import SiteFooter from './components/SiteFooter';
 import './globals.css';
 
@@ -20,7 +21,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1 }}>{children}</div>
+          <div style={{ flex: 1 }}>
+            {children}
+            <OpportunitiesAtsSearch />
+          </div>
           <SiteFooter />
         </div>
       </body>

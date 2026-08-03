@@ -25,6 +25,13 @@ export default function ProfessionalProfileSelect({
   const [profiles, setProfiles] = useState<ProfessionalProfileOption[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  function selectProfile(nextValue: string) {
+    onChange(nextValue);
+    window.dispatchEvent(new CustomEvent('kall:professional-profile-change', {
+      detail: { value: nextValue },
+    }));
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('kall_token');
     if (!token) {
@@ -46,11 +53,13 @@ export default function ProfessionalProfileSelect({
       })
       .then((data: ProfessionalProfileOption[]) => {
         setProfiles(Array.isArray(data) ? data : []);
-        if (!value && data[0]) onChange(String(data[0].id));
+        if (!value && data[0]) selectProfile(String(data[0].id));
+        else if (value) window.dispatchEvent(new CustomEvent('kall:professional-profile-change', { detail: { value } }));
         setState('ready');
       })
       .catch(() => setState('error'));
-  }, [onChange, value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <label>
@@ -69,7 +78,7 @@ export default function ProfessionalProfileSelect({
           className="input"
           name={name}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => selectProfile(event.target.value)}
           required={required}
         >
           {profiles.map((profile) => (

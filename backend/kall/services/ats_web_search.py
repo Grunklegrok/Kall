@@ -21,7 +21,7 @@ def _quoted_or(values: list[str], limit: int = 8) -> str:
     return " OR ".join(f'"{value}"' for value in cleaned[:limit])
 
 
-def build_ats_queries(profile: CareerProfile) -> list[dict[str, str]]:
+def build_ats_queries(profile: CareerProfile) -> list[dict[str, object]]:
     titles = _quoted_or(profile.target_titles)
     keywords = _quoted_or(profile.include_keywords, limit=5)
     locations = _quoted_or([*profile.states_regions, *profile.countries], limit=5)
@@ -40,16 +40,17 @@ def build_ats_queries(profile: CareerProfile) -> list[dict[str, str]]:
         intent_parts.append(exclusions)
 
     intent = " ".join(intent_parts).strip() or f'"{profile.name}"'
-    queries = []
-    for provider, domain in ATS_DOMAINS:
-        query = f"site:{domain} {intent}".strip()
-        queries.append(
-            {
-                "provider": provider,
-                "domain": domain,
-                "query": query,
-                "google_url": f"https://www.google.com/search?q={quote_plus(query)}",
-                "bing_url": f"https://www.bing.com/search?q={quote_plus(query)}",
-            }
-        )
-    return queries
+    site_clause = " OR ".join(f"site:{domain}" for _, domain in ATS_DOMAINS)
+    query = f"({site_clause}) {intent}".strip()
+
+    return [
+        {
+            "provider": "ATS Search",
+            "domain": "10 ATS platforms",
+            "domains": [domain for _, domain in ATS_DOMAINS],
+            "providers": [provider for provider, _ in ATS_DOMAINS],
+            "query": query,
+            "google_url": f"https://www.google.com/search?q={quote_plus(query)}",
+            "bing_url": f"https://www.bing.com/search?q={quote_plus(query)}",
+        }
+    ]
