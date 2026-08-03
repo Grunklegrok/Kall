@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
 type AtsQuery = {
@@ -11,14 +11,27 @@ type AtsQuery = {
   bing_url: string;
 };
 
+type SearchEngine = 'google' | 'bing';
+
+type ActiveSearch = {
+  domain: string;
+  engine: SearchEngine;
+};
+
 export default function SearchPage() {
   const [profileId, setProfileId] = useState('');
   const [queries, setQueries] = useState<AtsQuery[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeSearch, setActiveSearch] = useState<ActiveSearch | null>(null);
 
-  async function buildSearchPlan() {
-    if (!profileId) {
+  useEffect(() => {
+    const selectedProfile = new URLSearchParams(window.location.search).get('profile');
+    if (selectedProfile) setProfileId(selectedProfile);
+  }, []);
+
+  async function buildSearchPlan(selectedProfile = profileId) {
+    if (!selectedProfile) {
       setMessage('Select a professional profile first.');
       return;
     }
@@ -28,9 +41,10 @@ export default function SearchPage() {
       return;
     }
     setLoading(true);
+    setActiveSearch(null);
     setMessage('Building ATS-specific Boolean searches…');
     try {
-      const response = await fetch(`/api/kall/discovery/ats-search/${profileId}`, {
+      const response = await fetch(`/api/kall/discovery/ats-search/${selectedProfile}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.status === 401) {
@@ -49,6 +63,18 @@ export default function SearchPage() {
     }
   }
 
+  useEffect(() => {
+    if (profileId && queries.length === 0 && !loading) void buildSearchPlan(profileId);
+    // The first selected profile should build once; later changes are handled explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
+
+  function openModule(domain: string, engine: SearchEngine) {
+    setActiveSearch((current) => (
+      current?.domain === domain && current.engine === engine ? null : { domain, engine }
+    ));
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -64,9 +90,20 @@ export default function SearchPage() {
 
       <section className="card">
         <div className="two">
-          <ProfessionalProfileSelect value={profileId} onChange={setProfileId} />
+          <ProfessionalProfileSelect
+            value={profileId}
+            onChange={(value) => {
+              setProfileId(value);
+              setQueries([]);
+              setActiveSearch(null);
+              const url = new URL(window.location.href);
+              if (value) url.searchParams.set('profile', value);
+              else url.searchParams.delete('profile');
+              window.history.replaceState({}, '', url);
+            }}
+          />
           <div style={{ alignSelf: 'end' }}>
-            <button className="button" type="button" disabled={!profileId || loading} onClick={buildSearchPlan}>
+            <button className="button" type="button" disabled={!profileId || loading} onClick={() => buildSearchPlan()}>
               {loading ? 'Building searches…' : 'Build ATS searches'}
             </button>
           </div>
@@ -77,21 +114,67 @@ export default function SearchPage() {
       <section style={{ marginTop: 32 }}>
         <div className="section-heading">
           <div><span className="eyebrow">Search plan</span><h2 style={{ marginTop: 14 }}>ATS-specific queries</h2></div>
-          <p>Open searches individually to review fresh, less-visible listings directly in Google or Bing.</p>
+          <p>Choose an engine to open its search module directly inside the matching ATS card.</p>
         </div>
         <div className="stack">
-          {queries.map((item) => (
-            <article className="card" key={item.domain}>
-              <span className="pill">{item.provider}</span>
-              <h2 style={{ marginTop: 14 }}>{item.domain}</h2>
-              <code style={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 12 }}>{item.query}</code>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-                <a className="button" href={item.google_url} target="_blank" rel="noreferrer">Search Google</a>
-                <a className="button secondary" href={item.bing_url} target="_blank" rel="noreferrer">Search Bing</a>
-                <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(item.query)}>Copy query</button>
-              </div>
-            </article>
-          ))}
+          {queries.map((item) => {
+            const moduleOpen = activeSearch?.domain === item.domain;
+            const engine = moduleOpen ? activeSearch.engine : null;
+            const searchUrl = engine === 'google' ? item.google_url : item.bing_url;
+
+            return (
+              <article className="card" key={item.domain}>
+                <span className="pill">{item.provider}</span>
+                <h2 style={{ marginTop: 14 }}>{item.domain}</h2>
+                <code style={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 12 }}>{item.query}</code>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+                  <button className="button" type="button" onClick={() => openModule(item.domain, 'google')}>
+                    {moduleOpen && engine === 'google' ? 'Close Google module' : 'Search Google'}
+                  </button>
+                  <button className="button secondary" type="button" onClick={() => openModule(item.domain, 'bing')}>
+                    {moduleOpen && engine === 'bing' ? 'Close Bing module' : 'Search Bing'}
+                  </button>
+                  <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(item.query)}>Copy query</button>
+                </div>
+
+                {moduleOpen && engine && (
+                  <section
+                    className="card"
+                    aria-label={`${item.provider} ${engine} search module`}
+                    style={{ marginTop: 22, padding: 18, background: 'var(--surface-subtle, rgba(255,255,255,0.02))' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                      <div>
+                        <span className="eyebrow">{engine === 'google' ? 'Google' : 'Bing'} module</span>
+                        <h3 style={{ marginTop: 10, marginBottom: 0 }}>{item.provider} search</h3>
+                      </div>
+                      <button className="button ghost" type="button" onClick={() => setActiveSearch(null)}>Close module</button>
+                    </div>
+
+                    <p className="muted" style={{ marginTop: 12 }}>
+                      Search results remain inside this panel when the search engine permits embedding. Some engines block embedded result pages for security reasons.
+                    </p>
+
+                    <iframe
+                      key={`${item.domain}-${engine}`}
+                      src={searchUrl}
+                      title={`${engine} results for ${item.provider}`}
+                      referrerPolicy="no-referrer"
+                      sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                      style={{ width: '100%', minHeight: 620, border: '1px solid var(--border)', borderRadius: 18, marginTop: 16, background: '#fff' }}
+                    />
+
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+                      <a className="button secondary" href={searchUrl} target="_blank" rel="noreferrer">
+                        Open in a separate tab if blocked
+                      </a>
+                      <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(item.query)}>Copy this query</button>
+                    </div>
+                  </section>
+                )}
+              </article>
+            );
+          })}
           {!loading && queries.length === 0 && (
             <article className="card">
               <h2>No search plan yet</h2>
