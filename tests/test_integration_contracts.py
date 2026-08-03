@@ -3,7 +3,9 @@ from alembic.script import ScriptDirectory
 from sqlmodel import SQLModel
 
 from kall.main import app
+from kall.models import CareerGoal
 from kall.router_registry import API_ROUTERS
+from kall.services.opportunities import analyze_growth_market
 
 
 def test_router_registry_is_complete() -> None:
@@ -16,6 +18,10 @@ def test_router_registry_is_complete() -> None:
     }
     assert expected.issubset(paths)
     assert len(API_ROUTERS) >= 12
+
+
+def test_opportunity_service_uses_restored_career_goal_model() -> None:
+    assert analyze_growth_market.__annotations__["goal"] is CareerGoal
 
 
 def test_model_metadata_resolves_all_foreign_keys() -> None:
