@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import SiteFooter from './components/SiteFooter';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,7 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1 }}>{children}</div>
+          <SiteFooter />
+        </div>
+      </body>
     </html>
   );
 }
