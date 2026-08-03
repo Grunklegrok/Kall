@@ -15,6 +15,72 @@
   top: 20px;
 }
 
+.search-page-active,
+html.search-page-active,
+body.search-page-active {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.search-page-shell {
+  overflow: visible;
+}
+
+.search-page-hero {
+  padding-bottom: 36px;
+}
+
+.search-page-columns {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.65fr);
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+  overflow: visible;
+}
+
+.search-page-controls-column,
+.search-page-results-column {
+  min-width: 0;
+  overflow: visible;
+}
+
+.search-page-controls-column {
+  position: sticky;
+  top: 20px;
+}
+
+.search-page-results-column {
+  min-height: 620px;
+}
+
+.search-page-column-heading {
+  align-items: flex-start;
+}
+
+.search-page-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-page-results-column .google-job-search,
+.search-page-results-column .google-job-search-results,
+.search-page-results-column .gsc-control-cse,
+.search-page-results-column .gsc-results-wrapper-visible,
+.search-page-results-column .gsc-results-wrapper-overlay {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+.search-page-results-column .gsc-results-wrapper-overlay {
+  position: static !important;
+  inset: auto !important;
+}
+
 .search-application-note {
   margin-top: 24px;
   padding-top: 20px;
@@ -79,11 +145,17 @@
 
 @media (max-width: 960px) {
   .opportunity-search-columns,
+  .search-page-columns,
   .application-prep-columns {
     grid-template-columns: 1fr;
   }
 
-  .opportunity-search-controls {
+  .opportunity-search-controls,
+  .search-page-controls-column {
     position: static;
+  }
+
+  .search-page-results-column {
+    min-height: 0;
   }
 }
