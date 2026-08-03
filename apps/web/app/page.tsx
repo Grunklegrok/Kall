@@ -1,28 +1,34 @@
 const modules = [
-  [
-    'Career identity',
-    'A private, reusable record of your experience, achievements, preferences, and professional goals.',
-  ],
-  [
-    'Opportunity intelligence',
-    'Understand why a role fits, where the gaps are, and which experience best supports your candidacy.',
-  ],
-  [
-    'Resume Studio',
-    'Keep multiple resumes organized and prepare role-specific versions without losing your source history.',
-  ],
-  [
-    'Application preparation',
-    'Review every answer and document before Kall assists with a supported application workflow.',
-  ],
-  [
-    'Career memory',
-    'Capture accomplishments as they happen so your professional story stays current over time.',
-  ],
-  [
-    'Across devices',
-    'Continue the same career workflow on the web, desktop, and mobile without relearning the product.',
-  ],
+  {
+    title: 'Career identity',
+    body: 'A private, reusable record of your experience, achievements, preferences, and professional goals.',
+    href: '/demo/career-identity',
+  },
+  {
+    title: 'Opportunity intelligence',
+    body: 'Understand why a role fits, where the gaps are, and which experience best supports your candidacy.',
+    href: '/demo/opportunity-intelligence',
+  },
+  {
+    title: 'Resume Studio',
+    body: 'Keep multiple resumes organized and prepare role-specific versions without losing your source history.',
+    href: '/demo/resume-studio',
+  },
+  {
+    title: 'Application preparation',
+    body: 'Review every answer and document before Kall assists with a supported application workflow.',
+    href: '/demo/application-preparation',
+  },
+  {
+    title: 'Career memory',
+    body: 'Capture accomplishments as they happen so your professional story stays current over time.',
+    href: '/demo/career-memory',
+  },
+  {
+    title: 'Across devices',
+    body: 'Continue the same career workflow on the web, desktop, and mobile without relearning the product.',
+    href: '/demo/across-devices',
+  },
 ];
 
 export default function Home() {
@@ -33,7 +39,7 @@ export default function Home() {
           Kall
         </a>
         <nav aria-label="Primary navigation">
-          <a href="/search">Opportunities</a>
+          <a href="#product-demos">Explore demos</a>
           <a href="/login">Log in</a>
           <a className="button" href="/register">
             Create account
@@ -52,13 +58,13 @@ export default function Home() {
           <a className="button" href="/register">
             Create your Kall profile
           </a>
-          <a className="button secondary" href="/job-intelligence">
-            Explore match intelligence
+          <a className="button secondary" href="/demo/opportunity-intelligence">
+            Explore a product demo
           </a>
         </div>
       </section>
 
-      <section aria-labelledby="platform-heading">
+      <section id="product-demos" aria-labelledby="platform-heading">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Built around the individual</span>
@@ -67,17 +73,23 @@ export default function Home() {
             </h2>
           </div>
           <p>
-            Kall is designed to support deliberate career decisions over years,
-            not maximize applications or attention.
+            Explore sample module experiences without creating an account. Live opportunities and personal workspaces remain private to signed-in users.
           </p>
         </div>
 
         <div className="grid">
-          {modules.map(([title, body]) => (
-            <article className="card" key={title}>
-              <h2>{title}</h2>
-              <p>{body}</p>
-            </article>
+          {modules.map((module) => (
+            <a
+              className="card"
+              href={module.href}
+              key={module.title}
+              style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}
+              aria-label={`Explore the ${module.title} demo`}
+            >
+              <span className="pill">Explore demo</span>
+              <h2 style={{ marginTop: 14 }}>{module.title}</h2>
+              <p>{module.body}</p>
+            </a>
           ))}
         </div>
       </section>
