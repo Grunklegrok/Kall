@@ -1,10 +1,8 @@
 'use client';
 
-import Script from 'next/script';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-
-const GOOGLE_CSE_ID = '551e53ca5b28b4060';
+import GoogleJobSearchResults from './GoogleJobSearchResults';
 
 type AtsSearch = { query: string };
 type ProfileEvent = CustomEvent<{ value: string }>;
@@ -13,6 +11,7 @@ export default function OpportunitiesAtsSearch() {
   const pathname = usePathname();
   const [profileId, setProfileId] = useState('');
   const [search, setSearch] = useState<AtsSearch | null>(null);
+  const [activeQuery, setActiveQuery] = useState('');
   const [message, setMessage] = useState('Select a professional profile to prepare its unified job search.');
   const [loading, setLoading] = useState(false);
 
@@ -20,12 +19,15 @@ export default function OpportunitiesAtsSearch() {
     if (pathname !== '/opportunities') return;
     const params = new URLSearchParams(window.location.search);
     const profile = params.get('profile');
+    const query = params.get('q');
     if (profile) setProfileId(profile);
+    if (query) setActiveQuery(query);
 
     const listener = (event: Event) => {
       const value = (event as ProfileEvent).detail?.value || '';
       setProfileId(value);
       setSearch(null);
+      setActiveQuery('');
     };
     window.addEventListener('kall:professional-profile-change', listener);
     return () => window.removeEventListener('kall:professional-profile-change', listener);
@@ -58,26 +60,33 @@ export default function OpportunitiesAtsSearch() {
 
   if (pathname !== '/opportunities') return null;
 
-  const hasResults = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('q');
-
   function searchJobs() {
     if (!search?.query || !profileId) {
       setMessage('Select a profile before searching.');
       return;
     }
+    setActiveQuery(search.query);
     const url = new URL(window.location.href);
     url.searchParams.set('profile', profileId);
     url.searchParams.set('q', search.query);
-    window.location.assign(url.toString());
+    window.history.replaceState({}, '', url);
+    setMessage('Showing Google job results below.');
+  }
+
+  function clearResults() {
+    setActiveQuery('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    window.history.replaceState({}, '', url);
+    setMessage('Search results cleared.');
   }
 
   return (
     <section className="shell" style={{ marginTop: 32, marginBottom: 32 }}>
-      <Script src={`https://cse.google.com/cse.js?cx=${GOOGLE_CSE_ID}`} strategy="afterInteractive" />
       <article className="card">
         <div className="section-heading">
           <div><span className="eyebrow">Unified job search</span><h2 style={{ marginTop: 14 }}>Search every configured job source</h2></div>
-          <p>Google Programmable Search covers the ATS domains and public LinkedIn job pages configured in search engine {GOOGLE_CSE_ID}.</p>
+          <p>Google Programmable Search covers the ATS domains and public LinkedIn job pages configured for Kall.</p>
         </div>
         <p className="notice" aria-live="polite">{loading ? 'Preparing search…' : message}</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
@@ -87,13 +96,17 @@ export default function OpportunitiesAtsSearch() {
           <a className="button ghost" href={profileId ? `/search?profile=${profileId}` : '/search'}>
             Open search workspace
           </a>
-          {hasResults && <a className="button ghost" href={`/opportunities?profile=${profileId}`}>Clear results</a>}
+          {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
         </div>
 
-        {hasResults && (
-          <div className="google-job-search" style={{ marginTop: 24 }}>
-            <div className="gcse-searchresults-only" data-queryParameterName="q" />
-          </div>
+        {activeQuery && (
+          <section className="inline-search-module" aria-label="Unified job search results">
+            <div className="section-heading">
+              <div><span className="eyebrow">Search results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
+              <p>Results stay inside Kall. Job links open separately so your workspace remains available.</p>
+            </div>
+            <GoogleJobSearchResults query={activeQuery} />
+          </section>
         )}
       </article>
     </section>

@@ -303,37 +303,93 @@ nav a:hover {
   color: var(--text-secondary);
 }
 
-.google-job-search {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  padding: 18px;
+.inline-search-module {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
 }
 
+.google-job-search {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised) !important;
+  padding: 18px;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.google-job-search-results,
 .google-job-search .gsc-control-cse,
+.google-job-search .gsc-results-wrapper-overlay,
+.google-job-search .gsc-results-wrapper-visible,
+.google-job-search .gsc-results,
+.google-job-search .gsc-result-info,
+.google-job-search .gsc-orderby-container,
+.google-job-search .gsc-above-wrapper-area,
 .google-job-search .gsc-webResult.gsc-result,
 .google-job-search .gsc-results .gsc-imageResult {
-  border: 0;
-  background: transparent;
+  background: transparent !important;
+  color: var(--text) !important;
+  font-family: inherit !important;
+}
+
+.google-job-search .gsc-results-wrapper-overlay {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.google-job-search .gsc-modal-background-image,
+.google-job-search .gsc-results-close-btn,
+.google-job-search .gsc-results-close-btn-visible {
+  display: none !important;
 }
 
 .google-job-search .gsc-control-cse {
-  padding: 0;
+  width: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.google-job-search table,
+.google-job-search tbody,
+.google-job-search tr,
+.google-job-search td {
+  background: transparent !important;
+  color: inherit !important;
+  font-family: inherit !important;
 }
 
 .google-job-search .gsc-webResult.gsc-result {
-  margin: 0 0 14px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  margin: 0 0 14px !important;
+  padding: 20px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  background: var(--surface) !important;
+}
+
+.google-job-search .gsc-webResult.gsc-result:hover {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-interactive) !important;
 }
 
 .google-job-search .gs-title,
 .google-job-search .gs-title * {
   color: var(--text) !important;
+  font-family: inherit !important;
   font-size: 18px !important;
+  font-weight: 600 !important;
   line-height: 1.35 !important;
   text-decoration: none !important;
 }
@@ -342,15 +398,32 @@ nav a:hover {
 .google-job-search .gs-visibleUrl-long,
 .google-job-search .gs-visibleUrl-short {
   color: var(--accent-hover) !important;
+  font-family: inherit !important;
 }
 
-.google-job-search .gs-snippet {
+.google-job-search .gs-snippet,
+.google-job-search .gs-fileFormat,
+.google-job-search .gsc-result-info,
+.google-job-search .gsc-orderby-label {
   color: var(--text-secondary) !important;
+  font-family: inherit !important;
   line-height: 1.6 !important;
 }
 
+.google-job-search .gsc-thumbnail-inside,
+.google-job-search .gsc-url-top,
+.google-job-search .gsc-table-result {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.google-job-search .gsc-cursor-box {
+  margin: 22px 0 0 !important;
+  text-align: left !important;
+}
+
 .google-job-search .gsc-cursor-page {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   min-width: 40px;
@@ -360,6 +433,7 @@ nav a:hover {
   border-radius: var(--radius-sm);
   background: var(--surface) !important;
   color: var(--text-secondary) !important;
+  font-family: inherit !important;
   text-decoration: none !important;
 }
 
@@ -433,7 +507,7 @@ nav a:hover {
   }
 
   .google-job-search .gsc-webResult.gsc-result {
-    padding: 16px;
+    padding: 16px !important;
   }
 }
 

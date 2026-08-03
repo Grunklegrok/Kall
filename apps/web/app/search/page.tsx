@@ -1,10 +1,8 @@
 'use client';
 
-import Script from 'next/script';
 import { FormEvent, useEffect, useState } from 'react';
 import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
-
-const GOOGLE_CSE_ID = '551e53ca5b28b4060';
+import GoogleJobSearchResults from '../components/GoogleJobSearchResults';
 
 type AtsSearch = {
   query: string;
@@ -13,6 +11,7 @@ type AtsSearch = {
 export default function SearchPage() {
   const [profileId, setProfileId] = useState('');
   const [query, setQuery] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +20,10 @@ export default function SearchPage() {
     const selectedProfile = params.get('profile');
     const selectedQuery = params.get('q');
     if (selectedProfile) setProfileId(selectedProfile);
-    if (selectedQuery) setQuery(selectedQuery);
+    if (selectedQuery) {
+      setQuery(selectedQuery);
+      setActiveQuery(selectedQuery);
+    }
   }, []);
 
   async function buildProfileQuery(selectedProfile = profileId) {
@@ -60,11 +62,14 @@ export default function SearchPage() {
         return;
       }
 
+      setQuery(finalQuery);
+      setActiveQuery(finalQuery);
       const url = new URL(window.location.href);
       url.searchParams.set('q', finalQuery);
       if (profileId) url.searchParams.set('profile', profileId);
       else url.searchParams.delete('profile');
-      window.location.assign(url.toString());
+      window.history.replaceState({}, '', url);
+      setMessage('Showing Google job results below.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to start the job search.');
     } finally {
@@ -72,15 +77,16 @@ export default function SearchPage() {
     }
   }
 
-  const hasSearch = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('q');
+  function clearResults() {
+    setActiveQuery('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    window.history.replaceState({}, '', url);
+    setMessage('Search results cleared.');
+  }
 
   return (
     <main className="shell">
-      <Script
-        src={`https://cse.google.com/cse.js?cx=${GOOGLE_CSE_ID}`}
-        strategy="afterInteractive"
-      />
-
       <header className="topbar">
         <a className="brand" href="/">Kall</a>
         <nav><a href="/opportunities">Opportunities</a><a href="/profiles">Profiles</a></nav>
@@ -89,7 +95,7 @@ export default function SearchPage() {
       <section className="hero" style={{ paddingBottom: 36 }}>
         <span className="eyebrow">Unified job search</span>
         <h1>Search the job market from one place.</h1>
-        <p>Kall searches the ATS and public job sites configured in your Google Programmable Search Engine, including public LinkedIn job pages, and keeps the results inside Kall.</p>
+        <p>Kall searches the ATS and public job sites configured in Google Programmable Search, including public LinkedIn job pages, and keeps the results inside Kall.</p>
       </section>
 
       <section className="card">
@@ -120,11 +126,7 @@ export default function SearchPage() {
             <button className="button" type="submit" disabled={loading}>
               {loading ? 'Preparing search…' : 'Search jobs'}
             </button>
-            {hasSearch && (
-              <a className="button ghost" href={profileId ? `/search?profile=${profileId}` : '/search'}>
-                Clear results
-              </a>
-            )}
+            {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
           </div>
         </form>
         <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>{message}</p>
@@ -133,18 +135,16 @@ export default function SearchPage() {
       <section style={{ marginTop: 32 }}>
         <div className="section-heading">
           <div><span className="eyebrow">Results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
-          <p>Results are provided by Google Programmable Search and displayed directly inside Kall.</p>
+          <p>Results are rendered in this module using Kall’s layout and dark visual system.</p>
         </div>
-        <div className="card google-job-search">
-          {hasSearch ? (
-            <div className="gcse-searchresults-only" data-queryParameterName="q" />
-          ) : (
-            <div className="search-empty-state">
-              <h2>No search results yet</h2>
-              <p>Select a professional profile or enter a title, then press Search jobs.</p>
-            </div>
-          )}
-        </div>
+        {activeQuery ? (
+          <GoogleJobSearchResults query={activeQuery} />
+        ) : (
+          <div className="card search-empty-state">
+            <h2>No search results yet</h2>
+            <p>Select a professional profile or enter a title, then press Search jobs.</p>
+          </div>
+        )}
       </section>
     </main>
   );
