@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import AppNav from '../components/AppNav';
 import styles from './page.module.css';
 
@@ -30,6 +30,7 @@ type Profile = {
 };
 
 type Resume = { id: number; name: string; version: number };
+type UploadedResume = { id: number; name: string };
 
 const csv = (value: FormDataEntryValue | null) =>
   String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
@@ -40,6 +41,7 @@ export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [uploadingProfileId, setUploadingProfileId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
@@ -116,16 +118,60 @@ export default function ProfilesPage() {
     }
   }
 
-  async function assignResume(profileId: number, resumeId: string) {
+  async function assignResume(profileId: number, resumeId: string, successMessage = 'Profile resume updated.') {
     const auth = token();
-    if (!auth) return;
+    if (!auth) return false;
     const response = await fetch(`${API}/me/professional-profiles/${profileId}/default-resume`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${auth}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ resume_id: resumeId ? Number(resumeId) : null }),
     });
-    setMessage(response.ok ? 'Profile resume updated.' : 'Unable to associate that resume.');
+    setMessage(response.ok ? successMessage : 'Unable to associate that resume.');
     if (response.ok) await load();
+    return response.ok;
+  }
+
+  async function uploadResume(event: ChangeEvent<HTMLInputElement>, profile: Profile) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const auth = token();
+    if (!auth) return;
+    setUploadingProfileId(profile.id);
+    setMessage(`Uploading ${file.name}…`);
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`${API}/me/resumes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth}` },
+        body: form,
+      });
+      if (response.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
+      if (!response.ok) throw new Error('Unable to upload that resume.');
+
+      const uploaded = await response.json() as UploadedResume;
+      const shouldMakeDefault = !profile.default_resume_id || window.confirm(
+        `${uploaded.name} was uploaded. Make it the default resume for ${profile.name}?`,
+      );
+
+      if (shouldMakeDefault) {
+        await assignResume(profile.id, String(uploaded.id), `${uploaded.name} uploaded and set as the default resume.`);
+      } else {
+        setMessage(`${uploaded.name} uploaded. The current default resume was kept.`);
+        await load();
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to upload that resume.');
+    } finally {
+      setUploadingProfileId(null);
+    }
   }
 
   return (
@@ -209,9 +255,17 @@ export default function ProfilesPage() {
                   <option value="">No default resume</option>
                   {resumes.map((resume) => <option value={resume.id} key={resume.id}>{resume.name} · v{resume.version}</option>)}
                 </select>
-                {!resumes.length && <a href="/resumes">Upload a resume</a>}
+                <label className={`button secondary ${styles.uploadButton}`}>
+                  {uploadingProfileId === profile.id ? 'Uploading…' : 'Upload resume'}
+                  <input
+                    className={styles.fileInput}
+                    type="file"
+                    accept=".pdf,.docx"
+                    disabled={uploadingProfileId !== null}
+                    onChange={(event) => void uploadResume(event, profile)}
+                  />
+                </label>
                 <a className="button secondary" href={`/search?profile=${profile.id}`}>View opportunities</a>
-                <a className="button" href="/onboarding">Create other profile</a>
               </aside>
             </div>
           ))}
