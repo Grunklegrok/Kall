@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { countries, countryName, regionsForCountry } from '../../lib/location-data';
 import styles from './page.module.css';
 
 const API = '/api/kall';
@@ -9,6 +10,9 @@ const csv = (value: FormDataEntryValue | null) =>
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+
+const selectedOptions = (element: HTMLSelectElement): string[] =>
+  Array.from(element.selectedOptions, (option) => option.value);
 
 async function errorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -31,6 +35,23 @@ export default function Onboarding() {
   const [message, setMessage] = useState('');
   const [profileCreated, setProfileCreated] = useState(false);
   const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [selectedCountryCodes, setSelectedCountryCodes] = useState<string[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
+  const regionGroups = useMemo(
+    () =>
+      selectedCountryCodes.map((code) => ({
+        code,
+        name: countryName(code) || code,
+        regions: regionsForCountry(code),
+      })),
+    [selectedCountryCodes],
+  );
+
+  const availableRegionNames = useMemo(
+    () => new Set(regionGroups.flatMap((group) => group.regions.map((region) => region.name))),
+    [regionGroups],
+  );
 
   useEffect(() => {
     const storedToken = localStorage.getItem('kall_token');
@@ -41,6 +62,15 @@ export default function Onboarding() {
     setToken(storedToken);
     setReady(true);
   }, []);
+
+  function changeCountries(element: HTMLSelectElement) {
+    const nextCountryCodes = selectedOptions(element);
+    const nextRegionNames = new Set(
+      nextCountryCodes.flatMap((code) => regionsForCountry(code).map((region) => region.name)),
+    );
+    setSelectedCountryCodes(nextCountryCodes);
+    setSelectedRegions((current) => current.filter((region) => nextRegionNames.has(region)));
+  }
 
   async function createProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,8 +94,8 @@ export default function Onboarding() {
           functional_areas: [],
           include_keywords: csv(form.get('include_keywords')),
           exclude_keywords: [],
-          countries: csv(form.get('countries')),
-          states_regions: csv(form.get('states_regions')),
+          countries: selectedCountryCodes.map((code) => countryName(code) || code),
+          states_regions: selectedRegions,
           work_types: csv(form.get('work_types')),
           minimum_base: Number(form.get('minimum_base') || 0) || null,
           target_base: Number(form.get('target_base') || 0) || null,
@@ -180,10 +210,52 @@ export default function Onboarding() {
                 <textarea className={styles.input} name="target_titles" rows={4} placeholder="Target titles, comma separated" required />
                 <input className={styles.input} name="industries" placeholder="Industries, comma separated" />
                 <input className={styles.input} name="include_keywords" placeholder="Important keywords, comma separated" />
-                <div className={styles.two}>
-                  <input className={styles.input} name="countries" placeholder="Countries" />
-                  <input className={styles.input} name="states_regions" placeholder="States or regions" />
-                </div>
+
+                <label>
+                  <span>Countries</span>
+                  <select
+                    className={styles.input}
+                    name="countries"
+                    multiple
+                    size={8}
+                    value={selectedCountryCodes}
+                    onChange={(event) => changeCountries(event.currentTarget)}
+                    aria-describedby="countries-help"
+                  >
+                    {countries.map((country) => (
+                      <option key={country.code} value={country.code}>{country.name}</option>
+                    ))}
+                  </select>
+                  <small id="countries-help">Hold Ctrl (Windows) or Command (Mac) to select multiple countries.</small>
+                </label>
+
+                <label>
+                  <span>States or regions</span>
+                  <select
+                    className={styles.input}
+                    name="states_regions"
+                    multiple
+                    size={10}
+                    value={selectedRegions}
+                    disabled={selectedCountryCodes.length === 0 || availableRegionNames.size === 0}
+                    onChange={(event) => setSelectedRegions(selectedOptions(event.currentTarget))}
+                    aria-describedby="regions-help"
+                  >
+                    {regionGroups.map((group) => (
+                      <optgroup key={group.code} label={group.name}>
+                        {group.regions.map((region) => (
+                          <option key={`${group.code}-${region.code}`} value={region.name}>{region.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <small id="regions-help">
+                    {selectedCountryCodes.length === 0
+                      ? 'Select one or more countries first.'
+                      : 'Hold Ctrl (Windows) or Command (Mac) to select multiple states or regions.'}
+                  </small>
+                </label>
+
                 <input className={styles.input} name="work_types" defaultValue="remote, hybrid" placeholder="Work modes" />
                 <div className={styles.two}>
                   <input className={styles.input} name="minimum_base" type="number" placeholder="Minimum base" />
