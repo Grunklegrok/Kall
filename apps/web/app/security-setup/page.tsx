@@ -1,15 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-function decode(value: string) {
-  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
-  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
-}
-
-function encode(value: ArrayBuffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(value))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+import { decodeBase64Url, encodeBase64Url } from '../../lib/webauthn-bytes';
 
 export default function SecuritySetupPage() {
   const [message, setMessage] = useState('');
@@ -52,14 +44,14 @@ export default function SecuritySetupPage() {
       const response = await fetch('/api/kall/auth/passkeys/register/options', { method: 'POST', headers: { Authorization: `Bearer ${token()}` } });
       const options = await response.json();
       if (!response.ok) throw new Error(options.detail || 'Unable to start passkey setup.');
-      const challenge = encode(decode(options.challenge));
-      options.challenge = decode(options.challenge);
-      options.user.id = decode(options.user.id);
-      options.excludeCredentials = (options.excludeCredentials || []).map((item: { id: string }) => ({ ...item, id: decode(item.id) }));
+      const challenge = encodeBase64Url(decodeBase64Url(options.challenge));
+      options.challenge = decodeBase64Url(options.challenge);
+      options.user.id = decodeBase64Url(options.user.id);
+      options.excludeCredentials = (options.excludeCredentials || []).map((item: { id: string }) => ({ ...item, id: decodeBase64Url(item.id) }));
       const created = await navigator.credentials.create({ publicKey: options }) as PublicKeyCredential | null;
       if (!created) throw new Error('Passkey creation was cancelled.');
       const attestation = created.response as AuthenticatorAttestationResponse;
-      const credential = { id: created.id, rawId: encode(created.rawId), type: created.type, response: { attestationObject: encode(attestation.attestationObject), clientDataJSON: encode(attestation.clientDataJSON), transports: attestation.getTransports?.() || [] } };
+      const credential = { id: created.id, rawId: encodeBase64Url(created.rawId), type: created.type, response: { attestationObject: encodeBase64Url(attestation.attestationObject), clientDataJSON: encodeBase64Url(attestation.clientDataJSON), transports: attestation.getTransports?.() || [] } };
       const complete = await fetch('/api/kall/auth/passkeys/register/complete', { method: 'POST', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ challenge, credential, name: 'Primary passkey' }) });
       const data = await complete.json();
       if (!complete.ok) throw new Error(data.detail || 'Passkey registration failed.');
