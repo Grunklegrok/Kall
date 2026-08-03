@@ -1,8 +1,9 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '/api/kall';
 
 type Change = {
   id: number;
@@ -16,6 +17,7 @@ type Change = {
 };
 
 export default function TailoringPage() {
+  const [profileId, setProfileId] = useState('');
   const [proposalId, setProposalId] = useState('');
   const [changes, setChanges] = useState<Change[]>([]);
   const [unsupported, setUnsupported] = useState<string[]>([]);
@@ -23,11 +25,12 @@ export default function TailoringPage() {
 
   async function createProposal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profileId) return alert('Create or select a professional profile first.');
     const data = new FormData(event.currentTarget);
-    const response = await fetch(`${API}/api/tailoring/proposals`, {
+    const response = await fetch(`${API}/tailoring/proposals`, {
       method: 'POST',
       headers: {'Content-Type':'application/json', Authorization:`Bearer ${token}`},
-      body: JSON.stringify({job_id:Number(data.get('job_id')), professional_profile_id:Number(data.get('profile_id'))})
+      body: JSON.stringify({job_id:Number(data.get('job_id')), professional_profile_id:Number(profileId)})
     });
     const proposal = await response.json();
     if (!response.ok) return alert(proposal.detail || 'Unable to create proposal');
@@ -36,7 +39,7 @@ export default function TailoringPage() {
   }
 
   async function load(id = proposalId) {
-    const response = await fetch(`${API}/api/tailoring/proposals/${id}`, {headers:{Authorization:`Bearer ${token}`}});
+    const response = await fetch(`${API}/tailoring/proposals/${id}`, {headers:{Authorization:`Bearer ${token}`}});
     const data = await response.json();
     if (!response.ok) return alert(data.detail || 'Unable to load proposal');
     setChanges(data.changes);
@@ -44,7 +47,7 @@ export default function TailoringPage() {
   }
 
   async function decide(change: Change, status: string, edited_text?: string) {
-    const response = await fetch(`${API}/api/tailoring/changes/${change.id}`, {
+    const response = await fetch(`${API}/tailoring/changes/${change.id}`, {
       method:'PATCH',
       headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
       body:JSON.stringify({status, edited_text: edited_text || null})
@@ -59,8 +62,11 @@ export default function TailoringPage() {
     <section className="card">
       <h1>Evidence-grounded tailoring</h1>
       <form className="form" onSubmit={createProposal}>
-        <div className="two"><input className="input" name="job_id" placeholder="Job ID" required/><input className="input" name="profile_id" placeholder="Professional profile ID" required/></div>
-        <button className="button">Create proposal</button>
+        <div className="two">
+          <label><span className="muted">Job ID</span><input className="input" name="job_id" placeholder="Job ID" required/></label>
+          <ProfessionalProfileSelect value={profileId} onChange={setProfileId} />
+        </div>
+        <button className="button" disabled={!profileId}>Create proposal</button>
       </form>
     </section>
     {unsupported.length > 0 && <section className="card"><h2>Unsupported requirements</h2><ul>{unsupported.map(item => <li key={item}>{item}</li>)}</ul></section>}
