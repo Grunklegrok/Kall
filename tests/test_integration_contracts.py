@@ -19,10 +19,21 @@ def test_router_registry_is_complete() -> None:
 
 
 def test_model_metadata_resolves_all_foreign_keys() -> None:
-    """Mirror the initial migration's metadata sorting before deployment."""
     table_names = {table.name for table in SQLModel.metadata.sorted_tables}
     assert "careergoal" in table_names
     assert "growthmarketsignal" in table_names
+
+
+def test_initial_migration_uses_frozen_v03_table_scope() -> None:
+    script = ScriptDirectory.from_config(Config("alembic.ini"))
+    initial = script.get_revision("20260802_0001").module
+    baseline = set(initial.BASELINE_TABLE_NAMES)
+
+    assert "user" in baseline
+    assert "application" in baseline
+    assert "onboardingprogress" not in baseline
+    assert "careergoal" not in baseline
+    assert "subscription" not in baseline
 
 
 def test_alembic_revision_chain_is_complete_and_has_single_head() -> None:
