@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, HttpUrl
 
 from kall.models.enums import WorkType
 
@@ -90,10 +90,21 @@ class JobCreate(BaseModel):
     posted_at: datetime | None = None
 
 
+class ExternalJobImportRequest(BaseModel):
+    url: HttpUrl
+    title: str = Field(min_length=1, max_length=300)
+    company: str | None = Field(default=None, max_length=200)
+    snippet: str | None = Field(default=None, max_length=5000)
+    source: str = Field(default="google_cse", max_length=80)
+
+
 class PrepareApplicationRequest(BaseModel):
     job_id: int
     professional_profile_id: int
     resume_id: int | None = None
+    customize_resume: bool = True
+    generate_cover_letter: bool = True
+    application_mode: str = Field(default="assisted", pattern="^(assisted|automatic)$")
 
 
 class ApproveApplicationRequest(BaseModel):
