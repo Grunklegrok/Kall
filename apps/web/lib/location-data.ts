@@ -6,24 +6,18 @@ export type LocationOption = {
 };
 
 export const countries: LocationOption[] = allCountries
-  .map((country) => ({
-    code: country.countryShortCode,
-    name: country.countryName,
-  }))
+  .map(([name, code]) => ({ code, name }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
 export function regionsForCountry(countryCode: string): LocationOption[] {
-  const country = allCountries.find((item) => item.countryShortCode === countryCode);
+  const country = allCountries.find(([, code]) => code === countryCode);
   if (!country) return [];
 
-  return country.regions
-    .map((region) => ({
-      code: region.shortCode,
-      name: region.name,
-    }))
+  return country[2]
+    .map(([name, code]) => ({ code, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function countryName(countryCode: string): string | null {
-  return allCountries.find((item) => item.countryShortCode === countryCode)?.countryName ?? null;
+  return allCountries.find(([, code]) => code === countryCode)?.[0] ?? null;
 }
