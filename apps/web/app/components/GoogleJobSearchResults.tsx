@@ -66,7 +66,43 @@ function loadGoogleCse() {
   return window.__kallGoogleCsePromise;
 }
 
-export default function GoogleJobSearchResults({ query }: { query: string }) {
+function decorateResults(container: HTMLElement, profileId?: string) {
+  container.querySelectorAll<HTMLElement>('.gsc-webResult.gsc-result').forEach((result) => {
+    if (result.dataset.kallActions === 'true') return;
+    const titleLink = result.querySelector<HTMLAnchorElement>('.gs-title a');
+    if (!titleLink?.href) return;
+
+    result.dataset.kallActions = 'true';
+    const title = titleLink.textContent?.trim() || 'Imported job opportunity';
+    const snippet = result.querySelector<HTMLElement>('.gs-snippet')?.textContent?.trim() || '';
+
+    const actions = document.createElement('div');
+    actions.className = 'kall-search-result-actions';
+
+    const apply = document.createElement('a');
+    apply.className = 'button kall-result-apply';
+    apply.textContent = 'Apply with Kall';
+    const params = new URLSearchParams({
+      external_url: titleLink.href,
+      title,
+      snippet,
+    });
+    if (profileId) params.set('profile', profileId);
+    apply.href = `/apply?${params.toString()}`;
+
+    const view = document.createElement('a');
+    view.className = 'button secondary';
+    view.textContent = 'View posting';
+    view.href = titleLink.href;
+    view.target = '_blank';
+    view.rel = 'noreferrer';
+
+    actions.append(apply, view);
+    result.appendChild(actions);
+  });
+}
+
+export default function GoogleJobSearchResults({ query, profileId }: { query: string; profileId?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const reactId = useId().replace(/:/g, '');
   const elementName = `kall-job-results-${reactId}`;
@@ -74,6 +110,7 @@ export default function GoogleJobSearchResults({ query }: { query: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    let observer: MutationObserver | null = null;
     if (!query || !containerRef.current) return;
 
     async function renderResults() {
@@ -96,6 +133,11 @@ export default function GoogleJobSearchResults({ query }: { query: string }) {
           },
         });
 
+        observer = new MutationObserver(() => {
+          if (containerRef.current) decorateResults(containerRef.current, profileId);
+        });
+        observer.observe(containerRef.current, { childList: true, subtree: true });
+
         const element = api.getElement(elementName);
         if (!element) throw new Error('Google job results could not be initialized.');
         element.execute(query);
@@ -106,8 +148,11 @@ export default function GoogleJobSearchResults({ query }: { query: string }) {
     }
 
     void renderResults();
-    return () => { cancelled = true; };
-  }, [elementName, query]);
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+    };
+  }, [elementName, profileId, query]);
 
   return (
     <div className="google-job-search" aria-live="polite">

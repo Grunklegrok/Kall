@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import OpportunitiesAtsSearch from './components/OpportunitiesAtsSearch';
 import SiteFooter from './components/SiteFooter';
 import './globals.css';
+import './search-apply.css';
 
 export const metadata: Metadata = {
   title: {

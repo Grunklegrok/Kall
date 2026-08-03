@@ -14,6 +14,10 @@ def prepare_application(
     job: Job,
     career_profile: CareerProfile,
     resume: ResumeDocument | None,
+    *,
+    customize_resume: bool = True,
+    generate_cover_letter: bool = True,
+    application_mode: str = "assisted",
 ) -> Application:
     assert_application_allowed(user)
     generated_dir = Path("generated") / str(user.id) / f"{job.company}-{job.id}"
@@ -23,26 +27,45 @@ def prepare_application(
     if resume:
         base_text = resume.extracted_text or extract_resume_text(resume.file_path, resume.mime_type)
 
-    tailored_path = generated_dir / "tailored_resume.txt"
-    tailored_path.write_text(
-        f"TARGET ROLE\n{job.title} at {job.company}\n\n"
-        f"BASE RESUME\n{base_text}\n\n"
-        "TAILORING NOTE\nPreserve factual accuracy. Emphasize requirements present in the posting.",
-        encoding="utf-8",
-    )
+    tailored_path: Path | None = None
+    if customize_resume:
+        tailored_path = generated_dir / "tailored_resume.txt"
+        tailored_path.write_text(
+            f"TARGET ROLE\n{job.title} at {job.company}\n\n"
+            f"BASE RESUME\n{base_text}\n\n"
+            "TAILORING NOTE\nPreserve factual accuracy. Emphasize requirements present in the posting.",
+            encoding="utf-8",
+        )
+
+    cover_letter_path: Path | None = None
+    if generate_cover_letter:
+        cover_letter_path = generated_dir / "cover_letter.txt"
+        cover_letter_path.write_text(
+            f"Dear Hiring Team,\n\n"
+            f"I am applying for the {job.title} role at {job.company}. "
+            "This draft must be reviewed for factual accuracy and personalized before submission.\n\n"
+            "Sincerely,\nCandidate",
+            encoding="utf-8",
+        )
 
     application = Application(
         user_id=user.id,
         job_id=job.id,
         career_profile_id=career_profile.id,
         base_resume_id=resume.id if resume else None,
-        customized_resume_path=str(tailored_path),
+        customized_resume_path=str(tailored_path) if tailored_path else None,
+        cover_letter_path=str(cover_letter_path) if cover_letter_path else None,
         status=ApplicationStatus.REVIEW_REQUIRED,
         prepared_payload={
             "company": job.company,
             "title": job.title,
             "job_url": job.url,
-            "resume_path": str(tailored_path),
+            "resume_path": str(tailored_path) if tailored_path else (resume.file_path if resume else None),
+            "cover_letter_path": str(cover_letter_path) if cover_letter_path else None,
+            "customize_resume": customize_resume,
+            "generate_cover_letter": generate_cover_letter,
+            "application_mode": application_mode,
+            "submission_policy": "Explicit review and approval are required before any submission.",
         },
         unanswered_questions=["Confirm application-specific screening questions"],
         sensitive_fields_present=True,
