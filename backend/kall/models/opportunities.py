@@ -77,7 +77,7 @@ class NotificationDelivery(TimestampMixin, table=True):
 class GrowthMarketSignal(TimestampMixin, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(index=True, foreign_key="user.id")
-    growth_goal_id: int = Field(index=True, foreign_key="growthgoal.id")
+    growth_goal_id: int = Field(index=True, foreign_key="careergoal.id")
     observed_jobs: int = 0
     recurring_skills: list[dict] = Field(default_factory=list, sa_column=Column(JSON))
     recurring_requirements: list[dict] = Field(default_factory=list, sa_column=Column(JSON))
