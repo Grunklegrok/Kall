@@ -34,6 +34,7 @@ from kall.schemas import (
     ApproveApplicationRequest,
     AuthResponse,
     EmailVerificationConfirm,
+    IdentityProfileResponse,
     IdentityProfileUpdate,
     JobCreate,
     LoginRequest,
@@ -72,7 +73,7 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)) 
     verification_token, verification_hash = new_one_time_token()
     del verification_token
     session.add(UserCredential(user_id=user.id, password_hash=password_hash(payload.password), verification_token_hash=verification_hash))
-    session.add(CandidateProfile(user_id=user.id, country=payload.country, state_region=payload.state_region))
+    session.add(CandidateProfile(user_id=user.id, preferred_name=payload.full_name, country=payload.country, state_region=payload.state_region))
     session.commit()
     return AuthResponse(user_id=user.id, access_token=create_session(session, user.id))
 
@@ -159,6 +160,25 @@ def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+@router.get("/me/identity", response_model=IdentityProfileResponse)
+def get_identity(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> IdentityProfileResponse:
+    profile = session.exec(select(CandidateProfile).where(CandidateProfile.user_id == current_user.id)).first()
+    return IdentityProfileResponse(
+        email=current_user.email,
+        full_name=current_user.full_name,
+        preferred_name=(profile.preferred_name if profile else None) or current_user.full_name,
+        city=profile.city if profile else None,
+        state_region=(profile.state_region if profile else None) or current_user.state_region,
+        country=(profile.country if profile else None) or current_user.country,
+        timezone=profile.timezone if profile else None,
+        linkedin_url=profile.linkedin_url if profile else None,
+        github_url=profile.github_url if profile else None,
+        portfolio_urls=profile.portfolio_urls if profile else [],
+        website_urls=profile.website_urls if profile else [],
+        professional_summary=profile.professional_summary if profile else None,
+    )
+
+
 @router.put("/me/identity", response_model=CandidateProfile)
 def update_identity(payload: IdentityProfileUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> CandidateProfile:
     profile = session.exec(select(CandidateProfile).where(CandidateProfile.user_id == current_user.id)).first() or CandidateProfile(user_id=current_user.id)
@@ -176,6 +196,9 @@ def update_identity(payload: IdentityProfileUpdate, current_user: User = Depends
     profile.portfolio_urls = data["portfolio_urls"]
     profile.website_urls = data["website_urls"]
     profile.professional_summary = data["professional_summary"]
+    current_user.country = data["country"]
+    current_user.state_region = data["state_region"]
+    session.add(current_user)
     session.add(profile)
     session.commit()
     session.refresh(profile)
