@@ -1,73 +1,49 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AppNav from '../components/AppNav';
+import { showToast } from '../components/ToastHost';
+import { hideSearchResult, restoreSearchResult } from '../lib/searchResultState';
 import styles from './page.module.css';
 
 const API = '/api/kall';
+const STAGES = [
+  ['preparing', 'Preparing'],
+  ['review', 'Needs review'],
+  ['approved', 'Approved'],
+  ['submitted', 'Submitted'],
+  ['closed', 'Closed'],
+  ['rejected', 'Rejected'],
+] as const;
 
 type PipelineItem = {
-  id: number;
-  status: string;
-  stage: string;
-  company: string;
-  role: string;
-  location?: string | null;
-  match_score?: number | null;
-  updated_at?: string | null;
-  submitted_at?: string | null;
-  requires_review: boolean;
-  unanswered_question_count: number;
-  sensitive_fields_present: boolean;
-  failure_reason?: string | null;
+  id: number; status: string; stage: string; company: string; role: string;
+  location?: string | null; job_url?: string | null; match_score?: number | null;
+  updated_at?: string | null; submitted_at?: string | null; requires_review: boolean;
+  unanswered_question_count: number; sensitive_fields_present: boolean; failure_reason?: string | null;
 };
-
 type Stage = { key: string; label: string; count: number; items: PipelineItem[] };
 type Pipeline = {
   summary: { total: number; active: number; needs_review: number; submitted: number; best_match?: number | null };
-  stages: Stage[];
-  next_decision?: PipelineItem | null;
-  generated_at: string;
+  stages: Stage[]; next_decision?: PipelineItem | null; generated_at: string;
 };
 
 function isPipeline(value: unknown): value is Pipeline {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<Pipeline>;
-  return Boolean(
-    candidate.summary &&
-      typeof candidate.summary.total === 'number' &&
-      typeof candidate.summary.active === 'number' &&
-      typeof candidate.summary.needs_review === 'number' &&
-      typeof candidate.summary.submitted === 'number' &&
-      Array.isArray(candidate.stages) &&
-      candidate.stages.every(
-        stage =>
-          stage &&
-          typeof stage.key === 'string' &&
-          typeof stage.label === 'string' &&
-          typeof stage.count === 'number' &&
-          Array.isArray(stage.items),
-      ),
-  );
+  return Boolean(candidate.summary && Array.isArray(candidate.stages));
 }
 
 function relativeTime(value?: string | null) {
   if (!value) return 'Recently updated';
-  const milliseconds = Date.now() - new Date(value).getTime();
-  const days = Math.max(0, Math.floor(milliseconds / 86_400_000));
-  if (days === 0) return 'Updated today';
-  return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
+  const days = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000));
+  return days === 0 ? 'Updated today' : `Updated ${days} day${days === 1 ? '' : 's'} ago`;
 }
 
 function detail(item: PipelineItem) {
+  if (item.stage === 'rejected') return 'Rejected by employer';
   if (item.failure_reason) return item.failure_reason;
-  if (item.requires_review) {
-    const reasons = [
-      item.unanswered_question_count ? `${item.unanswered_question_count} unanswered` : null,
-      item.sensitive_fields_present ? 'sensitive fields require confirmation' : null,
-    ].filter(Boolean);
-    return reasons.join(' · ') || 'Review required before approval';
-  }
+  if (item.requires_review) return 'Review required before approval';
   if (item.submitted_at) return `Submitted ${new Date(item.submitted_at).toLocaleDateString()}`;
   return relativeTime(item.updated_at);
 }
@@ -76,103 +52,91 @@ export default function ApplicationsClient() {
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'signed-out' | 'error'>('loading');
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const loadPipeline = useCallback(async () => {
     const token = localStorage.getItem('kall_token');
-    if (!token) {
-      setState('signed-out');
-      return;
+    if (!token) { setState('signed-out'); return; }
+    try {
+      const response = await fetch(`${API}/me/applications`, { headers: { Authorization: `Bearer ${token}` } });
+      if (response.status === 401) { localStorage.removeItem('kall_token'); setState('signed-out'); return; }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Unable to load applications.');
+      if (!isPipeline(data)) throw new Error('The applications API returned an unexpected response.');
+      setPipeline(data); setState('ready');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to load applications.'); setState('error');
     }
-
-    fetch(`${API}/me/applications`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async response => {
-        if (response.status === 401) {
-          localStorage.removeItem('kall_token');
-          throw new Error('signed-out');
-        }
-        if (!response.ok) {
-          let detail = `The applications API returned ${response.status}.`;
-          try {
-            const data = await response.json();
-            if (typeof data.detail === 'string') detail = data.detail;
-          } catch {
-            // Preserve the status-based message for non-JSON responses.
-          }
-          throw new Error(detail);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!isPipeline(data)) throw new Error('The applications API returned an unexpected response.');
-        setPipeline(data);
-        setState('ready');
-      })
-      .catch(caught => {
-        if (caught instanceof Error && caught.message === 'signed-out') {
-          setState('signed-out');
-          return;
-        }
-        setError(caught instanceof Error ? caught.message : 'Unable to load applications.');
-        setState('error');
-      });
   }, []);
 
-  if (state === 'loading') {
-    return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Gathering your pipeline.</h1><p>Kall is reviewing your current application records.</p></div></section></main>;
+  useEffect(() => { void loadPipeline(); }, [loadPipeline]);
+
+  async function moveApplication(item: PipelineItem, stage: string) {
+    if (stage === item.stage) return;
+    const token = localStorage.getItem('kall_token');
+    if (!token) return;
+    setBusyId(item.id);
+    try {
+      const response = await fetch(`${API}/me/applications/${item.id}/stage`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ stage }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Unable to move application.');
+      if ((stage === 'closed' || stage === 'rejected') && item.job_url) {
+        hideSearchResult(item.job_url, item.role, 'applied_external');
+      }
+      showToast(`Application moved to ${STAGES.find(([key]) => key === stage)?.[1] || stage}.`, 'success');
+      await loadPipeline();
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : 'Unable to move application.', 'error');
+    } finally { setBusyId(null); }
   }
 
-  if (state === 'signed-out') {
-    return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Sign in to view your applications.</h1><p>Your application history and review queue remain private to your account.</p></div><a className='button' href='/login'>Sign in</a></section></main>;
+  async function removeApplication(item: PipelineItem) {
+    if (!window.confirm(`Remove ${item.role} at ${item.company} from your applications?`)) return;
+    const token = localStorage.getItem('kall_token');
+    if (!token) return;
+    setBusyId(item.id);
+    try {
+      const response = await fetch(`${API}/me/applications/${item.id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Unable to remove application.');
+      const jobUrl = typeof data.job_url === 'string' ? data.job_url : item.job_url;
+      if (jobUrl) restoreSearchResult(jobUrl);
+      showToast('Application removed. The job can appear in search results again.', 'success');
+      await loadPipeline();
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : 'Unable to remove application.', 'error');
+    } finally { setBusyId(null); }
   }
 
-  if (state === 'error' || !pipeline) {
-    return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Your pipeline could not be loaded.</h1><p>{error || 'The API did not return a usable response. Your stored application data was not changed.'}</p></div><button className='button' onClick={() => location.reload()}>Try again</button></section></main>;
-  }
+  if (state === 'loading') return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Gathering your pipeline.</h1></div></section></main>;
+  if (state === 'signed-out') return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Sign in to view your applications.</h1></div><a className='button' href='/login'>Sign in</a></section></main>;
+  if (state === 'error' || !pipeline) return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Your pipeline could not be loaded.</h1><p>{error}</p></div><button className='button' onClick={() => void loadPipeline()}>Try again</button></section></main>;
 
-  const hasApplications = pipeline.summary.total > 0;
   const next = pipeline.next_decision;
-
   return <main className='app-shell'>
     <AppNav current='applications'/>
-    <section className={styles.hero}>
-      <div>
-        <p className='eyebrow'>Application workspace</p>
-        <h1>{hasApplications ? `${pipeline.summary.active} active application${pipeline.summary.active === 1 ? '' : 's'}.` : 'Your pipeline is ready.'}</h1>
-        <p>{hasApplications ? 'Review what needs attention without turning your career into a task board.' : 'Prepare an application from a matched opportunity to begin tracking it here.'}</p>
-      </div>
-      <a className='button' href='/search'>Find opportunities</a>
-    </section>
-
+    <section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>{pipeline.summary.active} active application{pipeline.summary.active === 1 ? '' : 's'}.</h1><p>Move applications between stages or remove records you no longer want to track.</p></div><a className='button' href='/search'>Find opportunities</a></section>
     <section className={styles.summary} aria-label='Application summary'>
-      <article><strong>{pipeline.summary.active}</strong><span>Active</span></article>
-      <article><strong>{pipeline.summary.needs_review}</strong><span>Needs review</span></article>
-      <article><strong>{pipeline.summary.submitted}</strong><span>Submitted</span></article>
-      <article><strong>{pipeline.summary.best_match == null ? '—' : `${pipeline.summary.best_match}%`}</strong><span>Best match</span></article>
+      <article><strong>{pipeline.summary.active}</strong><span>Active</span></article><article><strong>{pipeline.summary.needs_review}</strong><span>Needs review</span></article><article><strong>{pipeline.summary.submitted}</strong><span>Submitted</span></article><article><strong>{pipeline.summary.best_match == null ? '—' : `${pipeline.summary.best_match}%`}</strong><span>Best match</span></article>
     </section>
-
     <section className={styles.pipeline} aria-label='Application pipeline'>
       {pipeline.stages.map(stage => <section className={styles.column} key={stage.key}>
         <header><h2>{stage.label}</h2><span>{stage.count}</span></header>
-        <div className={styles.list}>
-          {stage.items.length ? stage.items.map(item => <article className={styles.card} key={item.id}>
-            <span className={`${styles.dot} ${item.requires_review ? styles.accent : item.stage === 'submitted' ? styles.success : ''}`} aria-hidden='true'/>
-            <p>{item.company}{item.location ? ` · ${item.location}` : ''}</p>
-            <h3>{item.role}</h3>
-            <span>{detail(item)}{item.match_score == null ? '' : ` · ${item.match_score}% match`}</span>
-            <a href={`/job-intelligence?application=${item.id}`}>Open application</a>
-          </article>) : <div className={styles.empty}>No applications here.</div>}
-        </div>
+        <div className={styles.list}>{stage.items.length ? stage.items.map(item => <article className={styles.card} key={item.id} style={{ position: 'relative' }}>
+          <button type='button' onClick={() => void removeApplication(item)} disabled={busyId === item.id} aria-label={`Remove ${item.role}`} title='Remove application' style={{ position: 'absolute', top: 10, right: 10, border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: 20 }}>×</button>
+          <span className={`${styles.dot} ${item.requires_review ? styles.accent : item.stage === 'submitted' ? styles.success : ''}`} aria-hidden='true'/>
+          <p>{item.company}{item.location ? ` · ${item.location}` : ''}</p><h3>{item.role}</h3><span>{detail(item)}{item.match_score == null ? '' : ` · ${item.match_score}% match`}</span>
+          <label style={{ display: 'grid', gap: 6, marginTop: 14 }}><span className='muted'>Move to</span><select className='input' value={item.stage} disabled={busyId === item.id} onChange={event => void moveApplication(item, event.target.value)}>{STAGES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+          <a href={`/job-intelligence?application=${item.id}`}>Open application</a>
+        </article>) : <div className={styles.empty}>No applications here.</div>}</div>
       </section>)}
     </section>
-
-    {next ? <section className={`${styles.focus} card`}>
-      <div><p className='eyebrow'>Next decision</p><h2>{next.company} is ready for review.</h2><p>{detail(next)}. Kall will not approve or submit it without your confirmation.</p></div>
-      <a className='button' href={`/job-intelligence?application=${next.id}`}>Review preparation</a>
-    </section> : <section className={`${styles.focus} card`}>
-      <div><p className='eyebrow'>Next decision</p><h2>No application needs your approval.</h2><p>Kall will surface the next review here when a prepared application requires confirmation.</p></div>
-      <a className='button secondary' href='/morning-brief'>Return to Morning Brief</a>
-    </section>}
-
-    <p className={styles.note}>Pipeline data is loaded from your stored Kall applications. Interview and offer stages will appear only after those records are modeled and captured.</p>
+    {next ? <section className={`${styles.focus} card`}><div><p className='eyebrow'>Next decision</p><h2>{next.company} is ready for review.</h2><p>{detail(next)}.</p></div><a className='button' href={`/job-intelligence?application=${next.id}`}>Review preparation</a></section> : null}
+    <p className={styles.note}>Removing an application makes its job eligible to appear in search again. Closing or rejecting an application keeps the job excluded.</p>
   </main>;
 }

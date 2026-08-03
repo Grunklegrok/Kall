@@ -47,6 +47,13 @@ export function hideSearchResult(url: string, title: string | undefined, reason:
   window.dispatchEvent(new CustomEvent<void>('kall:search-results-changed'));
 }
 
+export function restoreSearchResult(url: string) {
+  const target = normalize(url);
+  const next = getHiddenSearchResults().filter((item) => normalize(item.url) !== target);
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent<void>('kall:search-results-changed'));
+}
+
 export function restoreHiddenSearchResults() {
   localStorage.removeItem(HIDDEN_KEY);
   window.dispatchEvent(new CustomEvent<void>('kall:search-results-changed'));
