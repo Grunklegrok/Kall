@@ -2,8 +2,6 @@
 
 import { FormEvent, useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 type AuthResponse = {
   access_token: string;
 };
@@ -28,7 +26,7 @@ export default function Register() {
     }
 
     try {
-      const response = await fetch(`${API}/api/auth/register`, {
+      const response = await fetch('/api/kall/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,7 +48,7 @@ export default function Register() {
       }
 
       localStorage.setItem('kall_token', data.access_token);
-      window.location.href = '/onboarding';
+      window.location.assign('/onboarding');
     } catch {
       setMessage('Kall could not reach the API. Please try again.');
     } finally {
@@ -87,7 +85,7 @@ export default function Register() {
           />
           <input className="input" name="country" placeholder="Country (optional)" />
           <input className="input" name="state_region" placeholder="State or region (optional)" />
-          <button className="button" disabled={submitting}>
+          <button className="button" type="submit" disabled={submitting}>
             {submitting ? 'Creating account…' : 'Create account'}
           </button>
         </form>
