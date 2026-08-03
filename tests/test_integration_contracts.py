@@ -51,6 +51,15 @@ def test_tailoring_migration_does_not_create_later_tables() -> None:
     assert "subscription" not in table_names
 
 
+def test_opportunity_migration_targets_career_goal_table() -> None:
+    script = ScriptDirectory.from_config(Config("alembic.ini"))
+    opportunities = script.get_revision("20260802_0008").module
+
+    assert opportunities.GROWTH_GOAL_TABLE == "careergoal"
+    assert opportunities.GROWTH_GOAL_TABLE in SQLModel.metadata.tables
+    assert "growthgoal" not in SQLModel.metadata.tables
+
+
 def test_alembic_revision_chain_is_complete_and_has_single_head() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
