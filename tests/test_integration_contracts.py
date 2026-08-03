@@ -2,22 +2,9 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from fastapi.routing import APIRoute
 from kall.main import app
+from kall.models import CareerGoal
 from kall.router_registry import API_ROUTERS
-from sqlmodel import SQLModel
-
-
-def _app_paths() -> set[str]:
-    """Return all registered route paths, including those in included sub-routers."""
-    paths: set[str] = set()
-    for r in app.routes:
-        if isinstance(r, APIRoute):
-            paths.add(r.path)
-        elif hasattr(r, "include_context") and hasattr(r, "original_router"):
-            prefix = r.include_context.prefix or ""
-            for sub in r.original_router.routes:
-                if isinstance(sub, APIRoute):
-                    paths.add(prefix + sub.path)
-    return paths
+from kall.services.opportunities import analyze_growth_market
 
 
 def test_router_registry_is_complete() -> None:
@@ -30,6 +17,10 @@ def test_router_registry_is_complete() -> None:
     }
     assert expected.issubset(paths)
     assert len(API_ROUTERS) >= 12
+
+
+def test_opportunity_service_uses_restored_career_goal_model() -> None:
+    assert analyze_growth_market.__annotations__["goal"] is CareerGoal
 
 
 def test_model_metadata_resolves_all_foreign_keys() -> None:

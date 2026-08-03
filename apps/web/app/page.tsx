@@ -35,8 +35,8 @@ export default function Home() {
         <nav aria-label="Primary navigation">
           <a href="/search">Opportunities</a>
           <a href="/login">Log in</a>
-          <a className="button" href="/onboarding">
-            Get started
+          <a className="button" href="/register">
+            Create account
           </a>
         </nav>
       </header>
@@ -49,7 +49,7 @@ export default function Home() {
           applications, and career memory into one calm, private workspace.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <a className="button" href="/onboarding">
+          <a className="button" href="/register">
             Create your Kall profile
           </a>
           <a className="button secondary" href="/job-intelligence">
