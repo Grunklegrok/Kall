@@ -16,6 +16,9 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    document.documentElement.classList.add('search-page-active');
+    document.body.classList.add('search-page-active');
+
     const params = new URLSearchParams(window.location.search);
     const selectedProfile = params.get('profile');
     const selectedQuery = params.get('q');
@@ -24,6 +27,11 @@ export default function SearchPage() {
       setQuery(selectedQuery);
       setActiveQuery(selectedQuery);
     }
+
+    return () => {
+      document.documentElement.classList.remove('search-page-active');
+      document.body.classList.remove('search-page-active');
+    };
   }, []);
 
   async function buildProfileQuery(selectedProfile = profileId) {
@@ -69,7 +77,7 @@ export default function SearchPage() {
       if (profileId) url.searchParams.set('profile', profileId);
       else url.searchParams.delete('profile');
       window.history.replaceState({}, '', url);
-      setMessage('Showing Google job results below.');
+      setMessage('Showing Google job results in the results column.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to start the job search.');
     } finally {
@@ -86,21 +94,28 @@ export default function SearchPage() {
   }
 
   return (
-    <main className="shell">
+    <main className="shell search-page-shell">
       <header className="topbar">
         <a className="brand" href="/">Kall</a>
         <nav><a href="/opportunities">Opportunities</a><a href="/profiles">Profiles</a></nav>
       </header>
 
-      <section className="hero" style={{ paddingBottom: 36 }}>
+      <section className="hero search-page-hero">
         <span className="eyebrow">Unified job search</span>
         <h1>Search the job market from one place.</h1>
-        <p>Kall searches the ATS and public job sites configured in Google Programmable Search, including public LinkedIn job pages, and keeps the results inside Kall.</p>
+        <p>Kall searches configured ATS and public job sites, including public LinkedIn job pages, and keeps the results inside Kall.</p>
       </section>
 
-      <section className="card">
-        <form className="form" onSubmit={searchJobs}>
-          <div className="two">
+      <section className="search-page-columns" aria-label="Job search workspace">
+        <article className="card search-page-controls-column">
+          <div className="section-heading search-page-column-heading">
+            <div>
+              <span className="eyebrow">Search jobs</span>
+              <h2 style={{ marginTop: 14 }}>Build your search</h2>
+            </div>
+          </div>
+
+          <form className="form" onSubmit={searchJobs}>
             <ProfessionalProfileSelect
               value={profileId}
               onChange={(value) => {
@@ -121,30 +136,34 @@ export default function SearchPage() {
                 placeholder="Director of Quality Engineering remote"
               />
             </label>
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="button" type="submit" disabled={loading}>
-              {loading ? 'Preparing search…' : 'Search jobs'}
-            </button>
-            {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
-          </div>
-        </form>
-        <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>{message}</p>
-      </section>
+            <div className="search-page-actions">
+              <button className="button" type="submit" disabled={loading}>
+                {loading ? 'Preparing search…' : 'Search jobs'}
+              </button>
+              {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
+            </div>
+          </form>
+          <p className="notice" aria-live="polite">{message}</p>
+        </article>
 
-      <section style={{ marginTop: 32 }}>
-        <div className="section-heading">
-          <div><span className="eyebrow">Results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
-          <p>Results are rendered in this module using Kall’s layout and dark visual system.</p>
-        </div>
-        {activeQuery ? (
-          <GoogleJobSearchResults query={activeQuery} />
-        ) : (
-          <div className="card search-empty-state">
-            <h2>No search results yet</h2>
-            <p>Select a professional profile or enter a title, then press Search jobs.</p>
+        <article className="card search-page-results-column">
+          <div className="section-heading search-page-column-heading">
+            <div>
+              <span className="eyebrow">Results</span>
+              <h2 style={{ marginTop: 14 }}>Current job matches</h2>
+            </div>
+            <p>Results remain in this outlined Kall module.</p>
           </div>
-        )}
+
+          {activeQuery ? (
+            <GoogleJobSearchResults query={activeQuery} />
+          ) : (
+            <div className="search-empty-state">
+              <h2>No search results yet</h2>
+              <p>Select a professional profile or enter a title, then press Search jobs.</p>
+            </div>
+          )}
+        </article>
       </section>
     </main>
   );
