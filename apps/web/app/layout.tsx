@@ -4,6 +4,7 @@ import SiteFooter from './components/SiteFooter';
 import ToastHost from './components/ToastHost';
 import './globals.css';
 import './search-apply.css';
+import './toast.css';
 
 export const metadata: Metadata = {
   title: {
