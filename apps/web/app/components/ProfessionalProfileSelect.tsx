@@ -1,0 +1,82 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
+export type ProfessionalProfileOption = {
+  id: number;
+  name: string;
+};
+
+type Props = {
+  name?: string;
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+  required?: boolean;
+};
+
+export default function ProfessionalProfileSelect({
+  name = 'profile_id',
+  value,
+  onChange,
+  label = 'Professional profile',
+  required = true,
+}: Props) {
+  const [profiles, setProfiles] = useState<ProfessionalProfileOption[]>([]);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    const token = localStorage.getItem('kall_token');
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
+
+    fetch('/api/kall/me/professional-profiles', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (response) => {
+        if (response.status === 401) {
+          localStorage.removeItem('kall_token');
+          window.location.replace('/login');
+          return [];
+        }
+        if (!response.ok) throw new Error('Unable to load profiles');
+        return response.json();
+      })
+      .then((data: ProfessionalProfileOption[]) => {
+        setProfiles(Array.isArray(data) ? data : []);
+        if (!value && data[0]) onChange(String(data[0].id));
+        setState('ready');
+      })
+      .catch(() => setState('error'));
+  }, [onChange, value]);
+
+  return (
+    <label>
+      <span className="muted">{label}</span>
+      {state === 'loading' ? (
+        <select className="input" disabled><option>Loading profiles…</option></select>
+      ) : state === 'error' ? (
+        <select className="input" disabled><option>Profiles could not be loaded</option></select>
+      ) : profiles.length === 0 ? (
+        <>
+          <select className="input" disabled><option>No profiles created</option></select>
+          <a href="/profiles" className="muted">Create a professional profile</a>
+        </>
+      ) : (
+        <select
+          className="input"
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          required={required}
+        >
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>{profile.name}</option>
+          ))}
+        </select>
+      )}
+    </label>
+  );
+}
