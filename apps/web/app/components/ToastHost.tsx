@@ -35,6 +35,7 @@ export default function ToastHost() {
         const message = node.textContent?.trim();
         if (!message || node.closest('.kall-toast-region')) return;
         const kind = (node.dataset.toastKind as ToastKind | undefined) || (node.getAttribute('role') === 'alert' ? 'error' : 'info');
+        node.style.display = 'none';
         add({ message, kind });
       });
     };
