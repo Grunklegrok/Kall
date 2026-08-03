@@ -1,159 +1,150 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Script from 'next/script';
+import { FormEvent, useEffect, useState } from 'react';
 import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
-type AtsSearch = {
-  provider: string;
-  domain: string;
-  domains: string[];
-  providers: string[];
-  query: string;
-  google_url: string;
-  bing_url: string;
-};
+const GOOGLE_CSE_ID = '551e53ca5b28b4060';
 
-type SearchEngine = 'google' | 'bing';
+type AtsSearch = {
+  query: string;
+};
 
 export default function SearchPage() {
   const [profileId, setProfileId] = useState('');
-  const [search, setSearch] = useState<AtsSearch | null>(null);
+  const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeEngine, setActiveEngine] = useState<SearchEngine | null>(null);
 
   useEffect(() => {
-    const selectedProfile = new URLSearchParams(window.location.search).get('profile');
+    const params = new URLSearchParams(window.location.search);
+    const selectedProfile = params.get('profile');
+    const selectedQuery = params.get('q');
     if (selectedProfile) setProfileId(selectedProfile);
+    if (selectedQuery) setQuery(selectedQuery);
   }, []);
 
-  async function buildSearchPlan(selectedProfile = profileId) {
-    if (!selectedProfile) {
-      setMessage('Select a professional profile first.');
-      return;
-    }
+  async function buildProfileQuery(selectedProfile = profileId) {
+    if (!selectedProfile) return '';
     const token = localStorage.getItem('kall_token');
     if (!token) {
       window.location.replace('/login');
-      return;
+      return '';
     }
+
+    const response = await fetch(`/api/kall/discovery/ats-search/${selectedProfile}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401) {
+      localStorage.removeItem('kall_token');
+      window.location.replace('/login');
+      return '';
+    }
+    const data = await response.json();
+    if (!response.ok) {
+      const detail = typeof data.detail === 'string' ? data.detail : 'Unable to build a profile search.';
+      throw new Error(detail);
+    }
+    return (data.queries?.[0] as AtsSearch | undefined)?.query || '';
+  }
+
+  async function searchJobs(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setLoading(true);
-    setActiveEngine(null);
-    setMessage('Building one unified ATS search…');
+    setMessage('Preparing your unified job search…');
     try {
-      const response = await fetch(`/api/kall/discovery/ats-search/${selectedProfile}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
-        localStorage.removeItem('kall_token');
-        window.location.replace('/login');
+      const generated = profileId ? await buildProfileQuery(profileId) : '';
+      const finalQuery = query.trim() || generated.trim();
+      if (!finalQuery) {
+        setMessage('Enter a job title or select a professional profile.');
         return;
       }
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Unable to build ATS Search.');
-      setSearch(data.queries?.[0] || null);
-      setMessage(data.queries?.[0] ? 'ATS Search is ready.' : 'No ATS Search could be generated.');
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', finalQuery);
+      if (profileId) url.searchParams.set('profile', profileId);
+      else url.searchParams.delete('profile');
+      window.location.assign(url.toString());
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to build ATS Search.');
+      setMessage(error instanceof Error ? error.message : 'Unable to start the job search.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    if (profileId && !search && !loading) void buildSearchPlan(profileId);
-    // Build once for the selected profile; later changes are handled by the selector.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId]);
-
-  const searchUrl = activeEngine === 'google' ? search?.google_url : search?.bing_url;
+  const hasSearch = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('q');
 
   return (
     <main className="shell">
+      <Script
+        src={`https://cse.google.com/cse.js?cx=${GOOGLE_CSE_ID}`}
+        strategy="afterInteractive"
+      />
+
       <header className="topbar">
         <a className="brand" href="/">Kall</a>
         <nav><a href="/opportunities">Opportunities</a><a href="/profiles">Profiles</a></nav>
       </header>
 
       <section className="hero" style={{ paddingBottom: 36 }}>
-        <span className="eyebrow">Hidden-market search</span>
-        <h1>One ATS Search across the job boards search engines index.</h1>
-        <p>Kall combines your target titles, skills, locations, remote preference, and exclusions into one Boolean query spanning the major ATS platforms.</p>
+        <span className="eyebrow">Unified job search</span>
+        <h1>Search the job market from one place.</h1>
+        <p>Kall searches the ATS and public job sites configured in your Google Programmable Search Engine, including public LinkedIn job pages, and keeps the results inside Kall.</p>
       </section>
 
       <section className="card">
-        <div className="two">
-          <ProfessionalProfileSelect
-            value={profileId}
-            onChange={(value) => {
-              setProfileId(value);
-              setSearch(null);
-              setActiveEngine(null);
-              const url = new URL(window.location.href);
-              if (value) url.searchParams.set('profile', value);
-              else url.searchParams.delete('profile');
-              window.history.replaceState({}, '', url);
-            }}
-          />
-          <div style={{ alignSelf: 'end' }}>
-            <button className="button" type="button" disabled={!profileId || loading} onClick={() => buildSearchPlan()}>
-              {loading ? 'Building ATS Search…' : 'Build ATS Search'}
-            </button>
+        <form className="form" onSubmit={searchJobs}>
+          <div className="two">
+            <ProfessionalProfileSelect
+              value={profileId}
+              onChange={(value) => {
+                setProfileId(value);
+                const url = new URL(window.location.href);
+                if (value) url.searchParams.set('profile', value);
+                else url.searchParams.delete('profile');
+                window.history.replaceState({}, '', url);
+              }}
+              required={false}
+            />
+            <label>
+              <span className="muted">Job title or search terms</span>
+              <input
+                className="input"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Director of Quality Engineering remote"
+              />
+            </label>
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button className="button" type="submit" disabled={loading}>
+              {loading ? 'Preparing search…' : 'Search jobs'}
+            </button>
+            {hasSearch && (
+              <a className="button ghost" href={profileId ? `/search?profile=${profileId}` : '/search'}>
+                Clear results
+              </a>
+            )}
+          </div>
+        </form>
         <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>{message}</p>
       </section>
 
       <section style={{ marginTop: 32 }}>
         <div className="section-heading">
-          <div><span className="eyebrow">ATS Search</span><h2 style={{ marginTop: 14 }}>Unified Boolean query</h2></div>
-          <p>One search covers Ashby, Greenhouse, Lever, iCIMS, Jobvite, Workday, BambooHR, SmartRecruiters, JazzHR, and Workable.</p>
+          <div><span className="eyebrow">Results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
+          <p>Results are provided by Google Programmable Search and displayed directly inside Kall.</p>
         </div>
-
-        {search ? (
-          <article className="card">
-            <span className="pill">ATS Search · {search.domains.length} platforms</span>
-            <h2 style={{ marginTop: 14 }}>All supported ATS job pages</h2>
-            <p className="muted">{search.providers.join(' · ')}</p>
-            <code style={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 16 }}>{search.query}</code>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-              <button className="button" type="button" onClick={() => setActiveEngine(activeEngine === 'google' ? null : 'google')}>
-                {activeEngine === 'google' ? 'Close Google module' : 'Search Google'}
-              </button>
-              <button className="button secondary" type="button" onClick={() => setActiveEngine(activeEngine === 'bing' ? null : 'bing')}>
-                {activeEngine === 'bing' ? 'Close Bing module' : 'Search Bing'}
-              </button>
-              <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(search.query)}>Copy ATS Search</button>
+        <div className="card google-job-search">
+          {hasSearch ? (
+            <div className="gcse-searchresults-only" data-queryParameterName="q" />
+          ) : (
+            <div className="search-empty-state">
+              <h2>No search results yet</h2>
+              <p>Select a professional profile or enter a title, then press Search jobs.</p>
             </div>
-
-            {activeEngine && searchUrl && (
-              <section className="card" aria-label={`${activeEngine} ATS Search module`} style={{ marginTop: 22, padding: 18, background: 'var(--surface-subtle, rgba(255,255,255,0.02))' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <div>
-                    <span className="eyebrow">{activeEngine === 'google' ? 'Google' : 'Bing'} module</span>
-                    <h3 style={{ marginTop: 10, marginBottom: 0 }}>Unified ATS Search</h3>
-                  </div>
-                  <button className="button ghost" type="button" onClick={() => setActiveEngine(null)}>Close module</button>
-                </div>
-                <p className="muted" style={{ marginTop: 12 }}>Results remain in this panel when the search engine permits embedding.</p>
-                <iframe
-                  key={activeEngine}
-                  src={searchUrl}
-                  title={`${activeEngine} unified ATS Search results`}
-                  referrerPolicy="no-referrer"
-                  sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-                  style={{ width: '100%', minHeight: 620, border: '1px solid var(--border)', borderRadius: 18, marginTop: 16, background: '#fff' }}
-                />
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
-                  <a className="button secondary" href={searchUrl} target="_blank" rel="noreferrer">Open in a separate tab if blocked</a>
-                  <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(search.query)}>Copy ATS Search</button>
-                </div>
-              </section>
-            )}
-          </article>
-        ) : !loading ? (
-          <article className="card"><h2>No ATS Search yet</h2><p>Select a profile and build the unified search.</p></article>
-        ) : null}
+          )}
+        </div>
       </section>
     </main>
   );

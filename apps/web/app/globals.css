@@ -303,6 +303,71 @@ nav a:hover {
   color: var(--text-secondary);
 }
 
+.google-job-search {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  padding: 18px;
+}
+
+.google-job-search .gsc-control-cse,
+.google-job-search .gsc-webResult.gsc-result,
+.google-job-search .gsc-results .gsc-imageResult {
+  border: 0;
+  background: transparent;
+}
+
+.google-job-search .gsc-control-cse {
+  padding: 0;
+}
+
+.google-job-search .gsc-webResult.gsc-result {
+  margin: 0 0 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.google-job-search .gs-title,
+.google-job-search .gs-title * {
+  color: var(--text) !important;
+  font-size: 18px !important;
+  line-height: 1.35 !important;
+  text-decoration: none !important;
+}
+
+.google-job-search .gs-visibleUrl,
+.google-job-search .gs-visibleUrl-long,
+.google-job-search .gs-visibleUrl-short {
+  color: var(--accent-hover) !important;
+}
+
+.google-job-search .gs-snippet {
+  color: var(--text-secondary) !important;
+  line-height: 1.6 !important;
+}
+
+.google-job-search .gsc-cursor-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  margin: 4px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm);
+  background: var(--surface) !important;
+  color: var(--text-secondary) !important;
+  text-decoration: none !important;
+}
+
+.google-job-search .gsc-cursor-current-page {
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+}
+
 @media (max-width: 1100px) {
   :root {
     --page-gutter: 48px;
@@ -361,6 +426,14 @@ nav a:hover {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .google-job-search {
+    padding: 10px;
+  }
+
+  .google-job-search .gsc-webResult.gsc-result {
+    padding: 16px;
   }
 }
 
