@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import OpportunitiesAtsSearch from './components/OpportunitiesAtsSearch';
 import SiteFooter from './components/SiteFooter';
+import ToastHost from './components/ToastHost';
 import './globals.css';
 import './search-apply.css';
 
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ToastHost />
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1 }}>
             {children}
