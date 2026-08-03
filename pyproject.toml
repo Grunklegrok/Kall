@@ -24,7 +24,9 @@ dependencies = [
   "stripe>=12,<13",
   "email-validator>=2.2,<3",
   "jinja2>=3.1,<4",
-  "pyyaml>=6,<7"
+  "pyyaml>=6,<7",
+  "pyotp>=2.9,<3",
+  "webauthn>=2.2,<3"
 ]
 
 [project.optional-dependencies]

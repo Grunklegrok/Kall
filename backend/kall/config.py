@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     stripe_price_id: str | None = None
     sensitive_data_encryption_key: str | None = None
 
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
+    microsoft_oauth_client_id: str | None = None
+    microsoft_oauth_client_secret: str | None = None
+    linkedin_oauth_client_id: str | None = None
+    linkedin_oauth_client_secret: str | None = None
+
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "Kall"
+    webauthn_origin: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
