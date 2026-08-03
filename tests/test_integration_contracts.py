@@ -1,5 +1,6 @@
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from sqlmodel import SQLModel
 
 from kall.main import app
 from kall.router_registry import API_ROUTERS
@@ -15,6 +16,13 @@ def test_router_registry_is_complete() -> None:
     }
     assert expected.issubset(paths)
     assert len(API_ROUTERS) >= 12
+
+
+def test_model_metadata_resolves_all_foreign_keys() -> None:
+    """Mirror the initial migration's metadata sorting before deployment."""
+    table_names = {table.name for table in SQLModel.metadata.sorted_tables}
+    assert "careergoal" in table_names
+    assert "growthmarketsignal" in table_names
 
 
 def test_alembic_revision_chain_is_complete_and_has_single_head() -> None:
