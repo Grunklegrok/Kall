@@ -1,0 +1,67 @@
+name: Run ruff and open fixes PR
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # needed to push/create PR
+
+jobs:
+  apply-ruff-fixes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff --fix
+        id: ruff
+        run: |
+          set -e
+          # run fix; do not fail the job on exit code so we can detect changes
+          ruff check --fix . || true
+          # detect if any files changed
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create branch and push fixes
+        if: steps.ruff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b auto/ruff-fixes
+          git add -A
+          git commit -m "chore: apply ruff --fix automatic fixes"
+          git push --set-upstream origin auto/ruff-fixes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create pull request with fixes
+        if: steps.ruff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: apply ruff fixes"
+          branch: auto/ruff-fixes
+          title: "chore: apply automatic ruff fixes"
+          body: |
+            This PR contains automatic fixes applied by ruff --fix.
+            Please review and merge to apply stylistic fixes across the repo.
+          base: main
