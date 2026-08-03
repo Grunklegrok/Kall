@@ -26,6 +26,33 @@ type Result = {
   };
 };
 
+function validationMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+  const detail = (payload as { detail?: unknown }).detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (!item || typeof item !== 'object') return '';
+        const issue = item as { msg?: unknown; loc?: unknown };
+        const message = typeof issue.msg === 'string' ? issue.msg : '';
+        const location = Array.isArray(issue.loc) ? issue.loc.filter((part) => part !== 'path').join(' → ') : '';
+        return [location, message].filter(Boolean).join(': ');
+      })
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join(' · ');
+  }
+  return fallback;
+}
+
+async function responseMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    return validationMessage(await response.json(), fallback);
+  } catch {
+    return fallback;
+  }
+}
+
 export default function JobIntelligencePage() {
   const [profileId, setProfileId] = useState('');
   const [jobId, setJobId] = useState('');
@@ -39,32 +66,59 @@ export default function JobIntelligencePage() {
       setMessage('Create or select a professional profile first.');
       return;
     }
+
+    const normalizedJobId = jobId.trim();
+    if (!/^\d+$/.test(normalizedJobId) || Number(normalizedJobId) < 1) {
+      setMessage('Enter a valid numeric job ID greater than zero.');
+      return;
+    }
+
+    const token = localStorage.getItem('kall_token');
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
+
     setIsLoading(true);
+    setResult(null);
     setMessage('Preparing match intelligence…');
 
     try {
-      const token = localStorage.getItem('kall_token');
-      const run = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}`, {
+      const run = await fetch(`${API}/jobs/${normalizedJobId}/intelligence/${profileId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      if (run.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
       if (!run.ok) {
-        const detail = await run.json();
-        setMessage(detail.detail || 'Unable to build intelligence.');
+        setMessage(await responseMessage(run, 'Unable to build intelligence.'));
         return;
       }
 
-      const response = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}`, {
+      const response = await fetch(`${API}/jobs/${normalizedJobId}/intelligence/${profileId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      if (response.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
       if (!response.ok) {
-        setMessage('The analysis ran, but the results could not be loaded.');
+        setMessage(await responseMessage(response, 'The analysis ran, but the results could not be loaded.'));
         return;
       }
 
-      setResult(await response.json());
+      const payload = await response.json();
+      if (!payload || !Array.isArray(payload.scores) || typeof payload.coverage !== 'object') {
+        setMessage('The API returned an incomplete intelligence result.');
+        return;
+      }
+      setResult(payload);
       setMessage('Analysis complete.');
     } catch {
       setMessage('Kall could not reach the API. Check your connection and try again.');
@@ -75,7 +129,11 @@ export default function JobIntelligencePage() {
 
   async function selectResume(resumeId: number) {
     const token = localStorage.getItem('kall_token');
-    const response = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}/selection`, {
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
+    const response = await fetch(`${API}/jobs/${jobId.trim()}/intelligence/${profileId}/selection`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -84,7 +142,7 @@ export default function JobIntelligencePage() {
       body: JSON.stringify({ resume_id: resumeId }),
     });
 
-    setMessage(response.ok ? `Resume ${resumeId} is now selected for this opportunity.` : 'Kall could not save the resume selection.');
+    setMessage(response.ok ? `Resume ${resumeId} is now selected for this opportunity.` : await responseMessage(response, 'Kall could not save the resume selection.'));
   }
 
   return (
@@ -110,7 +168,7 @@ export default function JobIntelligencePage() {
           <div className="two">
             <label>
               <span className="muted">Job ID</span>
-              <input className="input" name="job_id" inputMode="numeric" value={jobId} onChange={(event) => setJobId(event.target.value)} placeholder="e.g. 128" required />
+              <input className="input" name="job_id" inputMode="numeric" pattern="[0-9]+" min="1" value={jobId} onChange={(event) => setJobId(event.target.value)} placeholder="e.g. 128" required />
             </label>
             <ProfessionalProfileSelect value={profileId} onChange={setProfileId} />
           </div>
