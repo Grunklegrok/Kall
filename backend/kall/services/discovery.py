@@ -4,6 +4,7 @@ from kall.models import CareerProfile, Job, JobMatch, SearchRun, SearchSource, U
 from kall.providers.ashby import AshbyProvider
 from kall.providers.greenhouse import GreenhouseProvider
 from kall.providers.lever import LeverProvider
+from kall.services.ats_web_search import build_ats_queries
 from kall.services.matching import deterministic_match
 from kall.services.normalization import normalize_discovered
 from sqlmodel import Session, select
@@ -17,10 +18,16 @@ PROVIDERS={
 
 async def run_discovery(session: Session, user: User, profile: CareerProfile) -> SearchRun:
     sources = list(session.exec(select(SearchSource).where(SearchSource.user_id == user.id, SearchSource.enabled)))
+    # Build the same unified ATS query used by the web workspace for every
+    # immediate or scheduled run. Structured providers continue importing jobs;
+    # ATS Search records the broader hidden-market query in run history.
+    build_ats_queries(profile)
+    requested_providers = {s.provider for s in sources}
+    requested_providers.add("ats_search")
     run=SearchRun(
         user_id=user.id,
         professional_profile_id=profile.id,
-        providers_requested=sorted({s.provider for s in sources}),
+        providers_requested=sorted(requested_providers),
     )
     session.add(run)
     session.commit()
