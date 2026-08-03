@@ -70,7 +70,7 @@ export default function OpportunitiesAtsSearch() {
     url.searchParams.set('profile', profileId);
     url.searchParams.set('q', search.query);
     window.history.replaceState({}, '', url);
-    setMessage('Showing Google job results below.');
+    setMessage('Search complete. Choose Apply with Kall beside any result to begin preparation.');
   }
 
   function clearResults() {
@@ -82,33 +82,43 @@ export default function OpportunitiesAtsSearch() {
   }
 
   return (
-    <section className="shell" style={{ marginTop: 32, marginBottom: 32 }}>
-      <article className="card">
-        <div className="section-heading">
-          <div><span className="eyebrow">Unified job search</span><h2 style={{ marginTop: 14 }}>Search every configured job source</h2></div>
-          <p>Google Programmable Search covers the ATS domains and public LinkedIn job pages configured for Kall.</p>
-        </div>
-        <p className="notice" aria-live="polite">{loading ? 'Preparing search…' : message}</p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-          <button className="button" type="button" onClick={searchJobs} disabled={!search || loading}>
-            Search jobs
-          </button>
-          <a className="button ghost" href={profileId ? `/search?profile=${profileId}` : '/search'}>
-            Open search workspace
-          </a>
-          {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
-        </div>
+    <section className="shell opportunity-search-workspace" style={{ marginTop: 32, marginBottom: 32 }}>
+      <div className="opportunity-search-columns">
+        <article className="card opportunity-search-controls">
+          <span className="eyebrow">Unified job search</span>
+          <h2 style={{ marginTop: 14 }}>Search every configured job source</h2>
+          <p>Google Programmable Search covers Kall’s configured ATS domains and public LinkedIn job pages.</p>
+          <p className="notice" aria-live="polite" style={{ marginTop: 18 }}>{loading ? 'Preparing search…' : message}</p>
+          <div className="stack" style={{ marginTop: 18 }}>
+            <button className="button" type="button" onClick={searchJobs} disabled={!search || loading}>
+              Search jobs
+            </button>
+            <a className="button secondary" href={profileId ? `/search?profile=${profileId}` : '/search'}>
+              Open search workspace
+            </a>
+            {activeQuery && <button className="button ghost" type="button" onClick={clearResults}>Clear results</button>}
+          </div>
+          <div className="search-application-note">
+            <h3>Application handoff</h3>
+            <p>Each result can be imported into Kall, paired with this profile and a selected resume, then prepared for review.</p>
+          </div>
+        </article>
 
-        {activeQuery && (
-          <section className="inline-search-module" aria-label="Unified job search results">
-            <div className="section-heading">
-              <div><span className="eyebrow">Search results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
-              <p>Results stay inside Kall. Job links open separately so your workspace remains available.</p>
+        <article className="card opportunity-search-results-column" aria-label="Unified job search results">
+          <div className="section-heading">
+            <div><span className="eyebrow">Search results</span><h2 style={{ marginTop: 14 }}>Current job matches</h2></div>
+            <p>Results remain inside Kall. Choose Apply with Kall to select documents and preparation preferences.</p>
+          </div>
+          {activeQuery ? (
+            <GoogleJobSearchResults query={activeQuery} profileId={profileId} />
+          ) : (
+            <div className="search-empty-state">
+              <h2>No search results yet</h2>
+              <p>Select a professional profile above, then use Search jobs.</p>
             </div>
-            <GoogleJobSearchResults query={activeQuery} />
-          </section>
-        )}
-      </article>
+          )}
+        </article>
+      </div>
     </section>
   );
 }
