@@ -31,11 +31,17 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     headers,
     body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.arrayBuffer(),
     cache: 'no-store',
+    // OAuth start and callback endpoints intentionally return redirects. Those
+    // redirects must reach the browser rather than being followed by the
+    // Next.js server under the Kall origin.
+    redirect: 'manual',
   });
 
   const responseHeaders = new Headers();
   const responseContentType = response.headers.get('content-type');
+  const location = response.headers.get('location');
   if (responseContentType) responseHeaders.set('content-type', responseContentType);
+  if (location) responseHeaders.set('location', location);
 
   return new NextResponse(response.body, {
     status: response.status,
