@@ -2,9 +2,8 @@ name: Auto Fix Lint
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '0 3 * * 0' # weekly at 03:00 UTC on Sundays (optional)
 
 jobs:
   fix-lint:
@@ -28,10 +27,31 @@ jobs:
           pip install ruff
 
       - name: Run ruff --fix across repo
+        id: ruff_fix
         run: |
+          set -e
           ruff check --fix . || true
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push fixes
+        if: steps.ruff_fix.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b auto/ruff-fixes
+          git add -A
+          git commit -m "chore: apply ruff fixes"
+          git push --set-upstream origin auto/ruff-fixes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create pull request with fixes
+        if: steps.ruff_fix.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
