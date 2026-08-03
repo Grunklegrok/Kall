@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
-type AtsQuery = {
+type AtsSearch = {
   provider: string;
   domain: string;
+  domains: string[];
+  providers: string[];
   query: string;
   google_url: string;
   bing_url: string;
@@ -13,17 +15,12 @@ type AtsQuery = {
 
 type SearchEngine = 'google' | 'bing';
 
-type ActiveSearch = {
-  domain: string;
-  engine: SearchEngine;
-};
-
 export default function SearchPage() {
   const [profileId, setProfileId] = useState('');
-  const [queries, setQueries] = useState<AtsQuery[]>([]);
+  const [search, setSearch] = useState<AtsSearch | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeSearch, setActiveSearch] = useState<ActiveSearch | null>(null);
+  const [activeEngine, setActiveEngine] = useState<SearchEngine | null>(null);
 
   useEffect(() => {
     const selectedProfile = new URLSearchParams(window.location.search).get('profile');
@@ -41,8 +38,8 @@ export default function SearchPage() {
       return;
     }
     setLoading(true);
-    setActiveSearch(null);
-    setMessage('Building ATS-specific Boolean searches…');
+    setActiveEngine(null);
+    setMessage('Building one unified ATS search…');
     try {
       const response = await fetch(`/api/kall/discovery/ats-search/${selectedProfile}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -53,27 +50,23 @@ export default function SearchPage() {
         return;
       }
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Unable to build the search plan.');
-      setQueries(data.queries || []);
-      setMessage(`${data.queries?.length || 0} ATS searches are ready.`);
+      if (!response.ok) throw new Error(data.detail || 'Unable to build ATS Search.');
+      setSearch(data.queries?.[0] || null);
+      setMessage(data.queries?.[0] ? 'ATS Search is ready.' : 'No ATS Search could be generated.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to build the search plan.');
+      setMessage(error instanceof Error ? error.message : 'Unable to build ATS Search.');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (profileId && queries.length === 0 && !loading) void buildSearchPlan(profileId);
-    // The first selected profile should build once; later changes are handled explicitly.
+    if (profileId && !search && !loading) void buildSearchPlan(profileId);
+    // Build once for the selected profile; later changes are handled by the selector.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);
 
-  function openModule(domain: string, engine: SearchEngine) {
-    setActiveSearch((current) => (
-      current?.domain === domain && current.engine === engine ? null : { domain, engine }
-    ));
-  }
+  const searchUrl = activeEngine === 'google' ? search?.google_url : search?.bing_url;
 
   return (
     <main className="shell">
@@ -84,8 +77,8 @@ export default function SearchPage() {
 
       <section className="hero" style={{ paddingBottom: 36 }}>
         <span className="eyebrow">Hidden-market search</span>
-        <h1>Search the job boards that search engines index.</h1>
-        <p>Kall builds site-restricted Boolean searches from your target titles, skills, locations, remote preference, and excluded keywords.</p>
+        <h1>One ATS Search across the job boards search engines index.</h1>
+        <p>Kall combines your target titles, skills, locations, remote preference, and exclusions into one Boolean query spanning the major ATS platforms.</p>
       </section>
 
       <section className="card">
@@ -94,8 +87,8 @@ export default function SearchPage() {
             value={profileId}
             onChange={(value) => {
               setProfileId(value);
-              setQueries([]);
-              setActiveSearch(null);
+              setSearch(null);
+              setActiveEngine(null);
               const url = new URL(window.location.href);
               if (value) url.searchParams.set('profile', value);
               else url.searchParams.delete('profile');
@@ -104,7 +97,7 @@ export default function SearchPage() {
           />
           <div style={{ alignSelf: 'end' }}>
             <button className="button" type="button" disabled={!profileId || loading} onClick={() => buildSearchPlan()}>
-              {loading ? 'Building searches…' : 'Build ATS searches'}
+              {loading ? 'Building ATS Search…' : 'Build ATS Search'}
             </button>
           </div>
         </div>
@@ -113,75 +106,54 @@ export default function SearchPage() {
 
       <section style={{ marginTop: 32 }}>
         <div className="section-heading">
-          <div><span className="eyebrow">Search plan</span><h2 style={{ marginTop: 14 }}>ATS-specific queries</h2></div>
-          <p>Choose an engine to open its search module directly inside the matching ATS card.</p>
+          <div><span className="eyebrow">ATS Search</span><h2 style={{ marginTop: 14 }}>Unified Boolean query</h2></div>
+          <p>One search covers Ashby, Greenhouse, Lever, iCIMS, Jobvite, Workday, BambooHR, SmartRecruiters, JazzHR, and Workable.</p>
         </div>
-        <div className="stack">
-          {queries.map((item) => {
-            const moduleOpen = activeSearch?.domain === item.domain;
-            const engine = moduleOpen ? activeSearch.engine : null;
-            const searchUrl = engine === 'google' ? item.google_url : item.bing_url;
 
-            return (
-              <article className="card" key={item.domain}>
-                <span className="pill">{item.provider}</span>
-                <h2 style={{ marginTop: 14 }}>{item.domain}</h2>
-                <code style={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 12 }}>{item.query}</code>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-                  <button className="button" type="button" onClick={() => openModule(item.domain, 'google')}>
-                    {moduleOpen && engine === 'google' ? 'Close Google module' : 'Search Google'}
-                  </button>
-                  <button className="button secondary" type="button" onClick={() => openModule(item.domain, 'bing')}>
-                    {moduleOpen && engine === 'bing' ? 'Close Bing module' : 'Search Bing'}
-                  </button>
-                  <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(item.query)}>Copy query</button>
+        {search ? (
+          <article className="card">
+            <span className="pill">ATS Search · {search.domains.length} platforms</span>
+            <h2 style={{ marginTop: 14 }}>All supported ATS job pages</h2>
+            <p className="muted">{search.providers.join(' · ')}</p>
+            <code style={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 16 }}>{search.query}</code>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+              <button className="button" type="button" onClick={() => setActiveEngine(activeEngine === 'google' ? null : 'google')}>
+                {activeEngine === 'google' ? 'Close Google module' : 'Search Google'}
+              </button>
+              <button className="button secondary" type="button" onClick={() => setActiveEngine(activeEngine === 'bing' ? null : 'bing')}>
+                {activeEngine === 'bing' ? 'Close Bing module' : 'Search Bing'}
+              </button>
+              <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(search.query)}>Copy ATS Search</button>
+            </div>
+
+            {activeEngine && searchUrl && (
+              <section className="card" aria-label={`${activeEngine} ATS Search module`} style={{ marginTop: 22, padding: 18, background: 'var(--surface-subtle, rgba(255,255,255,0.02))' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <div>
+                    <span className="eyebrow">{activeEngine === 'google' ? 'Google' : 'Bing'} module</span>
+                    <h3 style={{ marginTop: 10, marginBottom: 0 }}>Unified ATS Search</h3>
+                  </div>
+                  <button className="button ghost" type="button" onClick={() => setActiveEngine(null)}>Close module</button>
                 </div>
-
-                {moduleOpen && engine && (
-                  <section
-                    className="card"
-                    aria-label={`${item.provider} ${engine} search module`}
-                    style={{ marginTop: 22, padding: 18, background: 'var(--surface-subtle, rgba(255,255,255,0.02))' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                      <div>
-                        <span className="eyebrow">{engine === 'google' ? 'Google' : 'Bing'} module</span>
-                        <h3 style={{ marginTop: 10, marginBottom: 0 }}>{item.provider} search</h3>
-                      </div>
-                      <button className="button ghost" type="button" onClick={() => setActiveSearch(null)}>Close module</button>
-                    </div>
-
-                    <p className="muted" style={{ marginTop: 12 }}>
-                      Search results remain inside this panel when the search engine permits embedding. Some engines block embedded result pages for security reasons.
-                    </p>
-
-                    <iframe
-                      key={`${item.domain}-${engine}`}
-                      src={searchUrl}
-                      title={`${engine} results for ${item.provider}`}
-                      referrerPolicy="no-referrer"
-                      sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-                      style={{ width: '100%', minHeight: 620, border: '1px solid var(--border)', borderRadius: 18, marginTop: 16, background: '#fff' }}
-                    />
-
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
-                      <a className="button secondary" href={searchUrl} target="_blank" rel="noreferrer">
-                        Open in a separate tab if blocked
-                      </a>
-                      <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(item.query)}>Copy this query</button>
-                    </div>
-                  </section>
-                )}
-              </article>
-            );
-          })}
-          {!loading && queries.length === 0 && (
-            <article className="card">
-              <h2>No search plan yet</h2>
-              <p>Select a profile and build searches. Kall will generate queries for Ashby, Greenhouse, Lever, iCIMS, Jobvite, Workday, BambooHR, SmartRecruiters, JazzHR, and Workable.</p>
-            </article>
-          )}
-        </div>
+                <p className="muted" style={{ marginTop: 12 }}>Results remain in this panel when the search engine permits embedding.</p>
+                <iframe
+                  key={activeEngine}
+                  src={searchUrl}
+                  title={`${activeEngine} unified ATS Search results`}
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                  style={{ width: '100%', minHeight: 620, border: '1px solid var(--border)', borderRadius: 18, marginTop: 16, background: '#fff' }}
+                />
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+                  <a className="button secondary" href={searchUrl} target="_blank" rel="noreferrer">Open in a separate tab if blocked</a>
+                  <button className="button ghost" type="button" onClick={() => navigator.clipboard.writeText(search.query)}>Copy ATS Search</button>
+                </div>
+              </section>
+            )}
+          </article>
+        ) : !loading ? (
+          <article className="card"><h2>No ATS Search yet</h2><p>Select a profile and build the unified search.</p></article>
+        ) : null}
       </section>
     </main>
   );
