@@ -4,6 +4,7 @@ import SiteFooter from './components/SiteFooter';
 import ToastHost from './components/ToastHost';
 import './globals.css';
 import './search-apply.css';
+import './search-tracking.css';
 import './toast.css';
 
 export const metadata: Metadata = {
@@ -15,11 +16,7 @@ export const metadata: Metadata = {
     'A calm, private workspace for building a meaningful career over time.',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
