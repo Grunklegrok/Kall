@@ -2,8 +2,6 @@
 
 import { FormEvent, useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 export default function Login() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -16,7 +14,7 @@ export default function Login() {
     const form = new FormData(event.currentTarget);
 
     try {
-      const response = await fetch(`${API}/api/auth/login`, {
+      const response = await fetch('/api/kall/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -31,7 +29,7 @@ export default function Login() {
       }
 
       localStorage.setItem('kall_token', data.access_token);
-      window.location.href = '/dashboard';
+      window.location.assign('/dashboard');
     } catch {
       setMessage('Kall could not reach the API. Please try again.');
     } finally {
@@ -49,7 +47,7 @@ export default function Login() {
         <form className="form" onSubmit={submit}>
           <input className="input" name="email" type="email" placeholder="Email" required />
           <input className="input" name="password" type="password" placeholder="Password" required />
-          <button className="button" disabled={submitting}>
+          <button className="button" type="submit" disabled={submitting}>
             {submitting ? 'Logging in…' : 'Log in'}
           </button>
         </form>
