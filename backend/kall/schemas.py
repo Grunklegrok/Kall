@@ -40,6 +40,21 @@ class IdentityProfileUpdate(BaseModel):
     professional_summary: str | None = None
 
 
+class IdentityProfileResponse(BaseModel):
+    email: EmailStr
+    full_name: str
+    preferred_name: str | None = None
+    city: str | None = None
+    state_region: str | None = None
+    country: str | None = None
+    timezone: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_urls: list[str] = Field(default_factory=list)
+    website_urls: list[str] = Field(default_factory=list)
+    professional_summary: str | None = None
+
+
 class ProfessionalProfileCreate(BaseModel):
     name: str
     target_titles: list[str] = Field(default_factory=list)
