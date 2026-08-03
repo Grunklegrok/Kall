@@ -1,0 +1,44 @@
+name: Auto Fix Lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  fix-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff --fix across repo
+        run: |
+          ruff check --fix . || true
+
+      - name: Create pull request with fixes
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: apply ruff fixes"
+          branch: auto/ruff-fixes
+          title: "chore: apply automatic ruff fixes"
+          body: |
+            This PR contains automatic fixes applied by ruff --fix.
+            Please review and merge to apply stylistic fixes across the repo.
+          base: main
