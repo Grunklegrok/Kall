@@ -4,6 +4,15 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def normalize_database_url(url: str) -> str:
+    """Use the installed psycopg v3 SQLAlchemy dialect for PostgreSQL URLs."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
 class Settings(BaseSettings):
     app_env: str = "development"
     app_secret_key: str = "change-me"
@@ -22,7 +31,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
-    def validate_production_secrets(self) -> "Settings":
+    def normalize_and_validate(self) -> "Settings":
+        self.database_url = normalize_database_url(self.database_url)
         if self.app_env == "production":
             if self.app_secret_key == "change-me" or len(self.app_secret_key) < 32:
                 raise ValueError("APP_SECRET_KEY must be at least 32 characters in production")
