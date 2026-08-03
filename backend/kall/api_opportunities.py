@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 
 from kall.auth import get_current_user
 from kall.db import get_session
-from kall.models import DiscoverySchedule, NotificationPreference, Opportunity, User
+from kall.models import CareerProfile, DiscoverySchedule, NotificationPreference, Opportunity, User
 from kall.services.opportunities import mark_state
 
 router = APIRouter(tags=["opportunities"])
@@ -34,14 +34,47 @@ class PreferenceInput(BaseModel):
     minimum_match_score: int = Field(default=60, ge=0, le=100)
 
 
+def _owned_profile(profile_id: int, user_id: int, session: Session) -> CareerProfile:
+    profile = session.get(CareerProfile, profile_id)
+    if not profile or profile.user_id != user_id:
+        raise HTTPException(404, "Professional profile not found")
+    return profile
+
+
 @router.post("/discovery/schedules", response_model=DiscoverySchedule)
 def create_schedule(payload: ScheduleInput, current: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    row = DiscoverySchedule(user_id=current.id, **payload.model_dump(exclude={"hour_local"}))
+    _owned_profile(payload.professional_profile_id, current.id, session)
+    row = session.exec(
+        select(DiscoverySchedule).where(
+            DiscoverySchedule.user_id == current.id,
+            DiscoverySchedule.professional_profile_id == payload.professional_profile_id,
+        )
+    ).first()
+    if not row:
+        row = DiscoverySchedule(
+            user_id=current.id,
+            professional_profile_id=payload.professional_profile_id,
+        )
+    row.cadence = payload.cadence
+    row.timezone = payload.timezone
     row.run_at_local = datetime.min.replace(hour=payload.hour_local).time()
+    row.max_posting_age_days = payload.max_posting_age_days
+    row.enabled = True
     session.add(row)
     session.commit()
     session.refresh(row)
     return row
+
+
+@router.get("/discovery/schedules", response_model=list[DiscoverySchedule])
+def list_schedules(current: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    return list(
+        session.exec(
+            select(DiscoverySchedule)
+            .where(DiscoverySchedule.user_id == current.id)
+            .order_by(DiscoverySchedule.updated_at.desc())
+        )
+    )
 
 
 @router.get("/opportunities", response_model=list[Opportunity])
