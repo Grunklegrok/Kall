@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import AppNav from '../components/AppNav';
 import styles from './page.module.css';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '/api/kall';
 
 type PipelineItem = {
   id: number;
@@ -30,6 +30,27 @@ type Pipeline = {
   generated_at: string;
 };
 
+function isPipeline(value: unknown): value is Pipeline {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<Pipeline>;
+  return Boolean(
+    candidate.summary &&
+      typeof candidate.summary.total === 'number' &&
+      typeof candidate.summary.active === 'number' &&
+      typeof candidate.summary.needs_review === 'number' &&
+      typeof candidate.summary.submitted === 'number' &&
+      Array.isArray(candidate.stages) &&
+      candidate.stages.every(
+        stage =>
+          stage &&
+          typeof stage.key === 'string' &&
+          typeof stage.label === 'string' &&
+          typeof stage.count === 'number' &&
+          Array.isArray(stage.items),
+      ),
+  );
+}
+
 function relativeTime(value?: string | null) {
   if (!value) return 'Recently updated';
   const milliseconds = Date.now() - new Date(value).getTime();
@@ -54,6 +75,7 @@ function detail(item: PipelineItem) {
 export default function ApplicationsClient() {
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'signed-out' | 'error'>('loading');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('kall_token');
@@ -61,17 +83,38 @@ export default function ApplicationsClient() {
       setState('signed-out');
       return;
     }
-    fetch(`${API}/api/me/applications`, { headers: { Authorization: `Bearer ${token}` } })
+
+    fetch(`${API}/me/applications`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async response => {
-        if (response.status === 401) throw new Error('signed-out');
-        if (!response.ok) throw new Error('Unable to load applications');
+        if (response.status === 401) {
+          localStorage.removeItem('kall_token');
+          throw new Error('signed-out');
+        }
+        if (!response.ok) {
+          let detail = `The applications API returned ${response.status}.`;
+          try {
+            const data = await response.json();
+            if (typeof data.detail === 'string') detail = data.detail;
+          } catch {
+            // Preserve the status-based message for non-JSON responses.
+          }
+          throw new Error(detail);
+        }
         return response.json();
       })
       .then(data => {
+        if (!isPipeline(data)) throw new Error('The applications API returned an unexpected response.');
         setPipeline(data);
         setState('ready');
       })
-      .catch(error => setState(error.message === 'signed-out' ? 'signed-out' : 'error'));
+      .catch(caught => {
+        if (caught instanceof Error && caught.message === 'signed-out') {
+          setState('signed-out');
+          return;
+        }
+        setError(caught instanceof Error ? caught.message : 'Unable to load applications.');
+        setState('error');
+      });
   }, []);
 
   if (state === 'loading') {
@@ -83,7 +126,7 @@ export default function ApplicationsClient() {
   }
 
   if (state === 'error' || !pipeline) {
-    return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Your pipeline could not be loaded.</h1><p>The API did not return a usable response. Your stored application data was not changed.</p></div><button className='button' onClick={() => location.reload()}>Try again</button></section></main>;
+    return <main className='app-shell'><AppNav current='applications'/><section className={styles.hero}><div><p className='eyebrow'>Application workspace</p><h1>Your pipeline could not be loaded.</h1><p>{error || 'The API did not return a usable response. Your stored application data was not changed.'}</p></div><button className='button' onClick={() => location.reload()}>Try again</button></section></main>;
   }
 
   const hasApplications = pipeline.summary.total > 0;
