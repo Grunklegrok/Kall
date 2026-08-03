@@ -1,6 +1,8 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
+
+import { countries, countryName, regionsForCountry } from '../../lib/location-data';
 
 type AuthResponse = {
   access_token: string;
@@ -9,6 +11,11 @@ type AuthResponse = {
 export default function Register() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [countryCode, setCountryCode] = useState('');
+  const [regionCode, setRegionCode] = useState('');
+
+  const regions = useMemo(() => regionsForCountry(countryCode), [countryCode]);
+  const selectedRegion = regions.find((region) => region.code === regionCode)?.name ?? null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,8 +40,8 @@ export default function Register() {
           full_name: form.get('full_name'),
           email: form.get('email'),
           password,
-          country: form.get('country') || null,
-          state_region: form.get('state_region') || null,
+          country: countryName(countryCode),
+          state_region: selectedRegion,
         }),
       });
 
@@ -83,8 +90,48 @@ export default function Register() {
             minLength={10}
             required
           />
-          <input className="input" name="country" placeholder="Country (optional)" />
-          <input className="input" name="state_region" placeholder="State or region (optional)" />
+          <label>
+            Country
+            <select
+              className="input"
+              name="country_code"
+              value={countryCode}
+              onChange={(event) => {
+                setCountryCode(event.target.value);
+                setRegionCode('');
+              }}
+            >
+              <option value="">Select a country</option>
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            State or region
+            <select
+              className="input"
+              name="region_code"
+              value={regionCode}
+              onChange={(event) => setRegionCode(event.target.value)}
+              disabled={!countryCode || regions.length === 0}
+            >
+              <option value="">
+                {!countryCode
+                  ? 'Select a country first'
+                  : regions.length === 0
+                    ? 'No regions available'
+                    : 'Select a state or region'}
+              </option>
+              {regions.map((region) => (
+                <option key={`${countryCode}-${region.code}`} value={region.code}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className="button" type="submit" disabled={submitting}>
             {submitting ? 'Creating account…' : 'Create account'}
           </button>
