@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import AppNav from '../components/AppNav';
+import { showToast } from '../components/ToastHost';
 import styles from './page.module.css';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '/api/kall';
 
 type Opportunity = {
   job_id: number;
@@ -37,6 +38,19 @@ function formatDay(value: string) {
   }).format(new Date(value));
 }
 
+async function responseMessage(response: Response) {
+  try {
+    const body = await response.json();
+    if (typeof body.detail === 'string') return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail.map((item: { msg?: string }) => item.msg).filter(Boolean).join(' · ');
+    }
+  } catch {
+    // Use the status-based fallback below for non-JSON responses.
+  }
+  return `Unable to prepare your brief (${response.status}).`;
+}
+
 export default function MorningBriefClient() {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [message, setMessage] = useState('Preparing your brief…');
@@ -49,15 +63,17 @@ export default function MorningBriefClient() {
     }
 
     const controller = new AbortController();
-    fetch(`${API}/api/me/morning-brief`, {
+    fetch(`${API}/me/morning-brief`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.detail || 'Unable to prepare your brief.');
+        if (response.status === 401) {
+          localStorage.removeItem('kall_token');
+          window.location.replace('/login');
+          throw new Error('Your session expired. Please sign in again.');
         }
+        if (!response.ok) throw new Error(await responseMessage(response));
         return response.json() as Promise<Brief>;
       })
       .then((data) => {
@@ -65,7 +81,12 @@ export default function MorningBriefClient() {
         setMessage('');
       })
       .catch((error: Error) => {
-        if (error.name !== 'AbortError') setMessage(error.message);
+        if (error.name === 'AbortError') return;
+        const nextMessage = error.message === 'Failed to fetch'
+          ? 'Kall could not reach the Morning Brief service. Please try again.'
+          : error.message;
+        setMessage(nextMessage);
+        showToast(nextMessage, 'error');
       });
 
     return () => controller.abort();
@@ -88,7 +109,11 @@ export default function MorningBriefClient() {
             </aside>
           </div>
         </section>
-        {message.startsWith('Sign in') && <a className="button" href="/login">Sign in</a>}
+        {message.startsWith('Sign in') ? (
+          <a className="button" href="/login">Sign in</a>
+        ) : message !== 'Preparing your brief…' ? (
+          <button className="button" type="button" onClick={() => window.location.reload()}>Try again</button>
+        ) : null}
       </main>
     );
   }
@@ -146,7 +171,7 @@ export default function MorningBriefClient() {
                     </p>
                     {opportunity.gaps.length > 0 && <p className={styles.reason}>Review: {opportunity.gaps.join(' · ')}</p>}
                     <div className={styles.actions}>
-                      <a className="button" href="/job-intelligence">Review analysis</a>
+                      <a className="button" href={`/job-intelligence?job=${opportunity.job_id}`}>Review analysis</a>
                       <a className="button secondary" href="/search">Save for later</a>
                     </div>
                   </div>
