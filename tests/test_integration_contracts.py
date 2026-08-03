@@ -17,7 +17,16 @@ def test_router_registry_is_complete() -> None:
     assert len(API_ROUTERS) >= 12
 
 
-def test_alembic_has_single_head() -> None:
+def test_alembic_revision_chain_is_complete_and_has_single_head() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
-    assert len(script.get_heads()) == 1
+
+    # Walking from each head forces Alembic to resolve every down_revision.
+    # This catches missing intermediate migration files, not just split heads.
+    heads = script.get_heads()
+    assert len(heads) == 1
+    revisions = list(script.walk_revisions(base="base", head=heads[0]))
+    revision_ids = {revision.revision for revision in revisions}
+
+    assert "20260802_0007" in revision_ids
+    assert "20260802_0013" in revision_ids
