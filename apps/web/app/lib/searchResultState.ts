@@ -5,6 +5,12 @@ export type HiddenSearchResult = {
   reason: 'applied_external' | 'applied_kall';
 };
 
+declare global {
+  interface WindowEventMap {
+    'kall:search-results-changed': CustomEvent<void>;
+  }
+}
+
 const HIDDEN_KEY = 'kall_hidden_search_results';
 const PENDING_KEY = 'kall_pending_posting';
 
@@ -38,12 +44,12 @@ export function hideSearchResult(url: string, title: string | undefined, reason:
   const current = getHiddenSearchResults().filter((item) => normalize(item.url) !== target);
   current.push({ url: target, title, reason, hiddenAt: new Date().toISOString() });
   localStorage.setItem(HIDDEN_KEY, JSON.stringify(current));
-  window.dispatchEvent(new CustomEvent('kall:search-results-changed'));
+  window.dispatchEvent(new CustomEvent<void>('kall:search-results-changed'));
 }
 
 export function restoreHiddenSearchResults() {
   localStorage.removeItem(HIDDEN_KEY);
-  window.dispatchEvent(new CustomEvent('kall:search-results-changed'));
+  window.dispatchEvent(new CustomEvent<void>('kall:search-results-changed'));
 }
 
 export function hiddenSearchResultCount() {
