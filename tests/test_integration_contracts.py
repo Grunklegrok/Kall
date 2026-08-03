@@ -36,6 +36,21 @@ def test_initial_migration_uses_frozen_v03_table_scope() -> None:
     assert "subscription" not in baseline
 
 
+def test_tailoring_migration_does_not_create_later_tables() -> None:
+    script = ScriptDirectory.from_config(Config("alembic.ini"))
+    tailoring = script.get_revision("20260802_0005").module
+    table_names = set(tailoring.TAILORING_TABLE_NAMES)
+
+    assert table_names == {
+        "tailoringproposal",
+        "tailoringchange",
+        "tailoringaudit",
+    }
+    assert "documenttemplate" not in table_names
+    assert "careergoal" not in table_names
+    assert "subscription" not in table_names
+
+
 def test_alembic_revision_chain_is_complete_and_has_single_head() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
