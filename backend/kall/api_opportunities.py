@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from kall.auth import get_current_user
 from kall.db import get_session
 from kall.models import CareerProfile, DiscoverySchedule, NotificationPreference, Opportunity, User
+from kall.services.ats_web_search import build_ats_queries
 from kall.services.opportunities import mark_state
 
 router = APIRouter(tags=["opportunities"])
@@ -39,6 +40,16 @@ def _owned_profile(profile_id: int, user_id: int, session: Session) -> CareerPro
     if not profile or profile.user_id != user_id:
         raise HTTPException(404, "Professional profile not found")
     return profile
+
+
+@router.get("/discovery/ats-search/{profile_id}")
+def ats_search_plan(profile_id: int, current: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    profile = _owned_profile(profile_id, current.id, session)
+    return {
+        "professional_profile_id": profile.id,
+        "profile_name": profile.name,
+        "queries": build_ats_queries(profile),
+    }
 
 
 @router.post("/discovery/schedules", response_model=DiscoverySchedule)
