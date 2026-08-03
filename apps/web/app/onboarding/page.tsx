@@ -1,21 +1,259 @@
 'use client';
 
-import {FormEvent,useState} from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import styles from './page.module.css';
 
-const API=process.env.NEXT_PUBLIC_API_URL||'http://localhost:8000';
-const csv=(value:FormDataEntryValue|null)=>String(value||'').split(',').map(v=>v.trim()).filter(Boolean);
+const API = '/api/kall';
+const csv = (value: FormDataEntryValue | null) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-export default function Onboarding(){
- const[step,setStep]=useState(1);const[token,setToken]=useState('');const[message,setMessage]=useState('');const[profileCreated,setProfileCreated]=useState(false);const[resumeUploaded,setResumeUploaded]=useState(false);
- async function register(e:FormEvent<HTMLFormElement>){e.preventDefault();setMessage('');const f=new FormData(e.currentTarget);const r=await fetch(`${API}/api/auth/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:f.get('full_name'),email:f.get('email'),password:f.get('password'),country:f.get('country'),state_region:f.get('state_region')})});const d=await r.json();if(!r.ok)return setMessage(d.detail||'Registration failed');localStorage.setItem('kall_token',d.access_token);setToken(d.access_token);setStep(2)}
- async function createProfile(e:FormEvent<HTMLFormElement>){e.preventDefault();setMessage('');const f=new FormData(e.currentTarget);const r=await fetch(`${API}/api/me/professional-profiles`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({name:f.get('name'),target_titles:csv(f.get('target_titles')),industries:csv(f.get('industries')),functional_areas:[],include_keywords:csv(f.get('include_keywords')),exclude_keywords:[],countries:csv(f.get('countries')),states_regions:csv(f.get('states_regions')),work_types:csv(f.get('work_types')),minimum_base:Number(f.get('minimum_base')||0)||null,target_base:Number(f.get('target_base')||0)||null,stretch_base:null,target_total_comp:null,travel_max_percent:null,relocation_preference:null,is_active:true})});if(!r.ok){const d=await r.json();return setMessage(d.detail||'Could not create your career strategy.')}setProfileCreated(true);setStep(3)}
- async function uploadResume(e:FormEvent<HTMLFormElement>){e.preventDefault();setMessage('');const f=new FormData(e.currentTarget);const r=await fetch(`${API}/api/me/resumes`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:f});if(!r.ok){const d=await r.json();return setMessage(d.detail||'Resume upload failed.')}setResumeUploaded(true);setStep(4)}
- const finish=()=>{location.href='/morning-brief'};
- return <main className={styles.shell}><div className={styles.layout}><aside className={styles.aside}><div className={styles.brand}>Kall</div><div className={styles.steps}>{[['Account','Your private career workspace'],['Strategy','Where you want to go'],['Resume','What you have built']].map((item,index)=>{const n=index+1;return <div key={item[0]} className={`${styles.step} ${step===n?styles.active:''} ${step>n?styles.done:''}`}><strong>{step>n?'✓':n}</strong><div><b>{item[0]}</b><small>{item[1]}</small></div></div>})}</div></aside><section className={styles.panel}>
- {step===1&&<><p className='eyebrow'>Begin quietly</p><h1>Build a career system around your calling.</h1><p className={styles.intro}>Create a private account first. Kall will then help you define one career strategy and add a starting resume.</p><form className={styles.form} onSubmit={register}><input className={styles.input} name='full_name' placeholder='Full name' required/><div className={styles.two}><input className={styles.input} name='country' placeholder='Country'/><input className={styles.input} name='state_region' placeholder='State or region'/></div><input className={styles.input} name='email' type='email' placeholder='Email' required/><input className={styles.input} name='password' type='password' minLength={10} placeholder='Password' required/><div className={styles.actions}><span/><button className={styles.button}>Create account</button></div></form></>}
- {step===2&&<><p className='eyebrow'>Career strategy</p><h1>Where do you want your career to go?</h1><p className={styles.intro}>Start with one focused direction. You can create additional strategies later.</p><form className={styles.form} onSubmit={createProfile}><input className={styles.input} name='name' placeholder='Strategy name, e.g. Quality Leadership' required/><textarea className={styles.input} name='target_titles' rows={4} placeholder='Target titles, comma separated' required/><input className={styles.input} name='industries' placeholder='Industries, comma separated'/><input className={styles.input} name='include_keywords' placeholder='Important keywords, comma separated'/><div className={styles.two}><input className={styles.input} name='countries' placeholder='Countries'/><input className={styles.input} name='states_regions' placeholder='States or regions'/></div><input className={styles.input} name='work_types' defaultValue='remote, hybrid' placeholder='Work modes'/><div className={styles.two}><input className={styles.input} name='minimum_base' type='number' placeholder='Minimum base'/><input className={styles.input} name='target_base' type='number' placeholder='Target base'/></div><div className={styles.actions}><span/><button className={styles.button}>Save strategy</button></div></form></>}
- {step===3&&<><p className='eyebrow'>Resume Studio</p><h1>Add the resume Kall should understand first.</h1><p className={styles.intro}>Kall extracts the document text and keeps the original source. You can organize versions and assign defaults later.</p><form className={styles.form} onSubmit={uploadResume}><input className={styles.input} type='file' name='file' accept='.pdf,.docx' required/><div className={styles.note}>Use a factual, current resume. Kall will not invent qualifications or silently change source facts.</div><div className={styles.actions}><button type='button' className={`${styles.button} ${styles.secondary}`} onClick={()=>setStep(4)}>Skip for now</button><button className={styles.button}>Upload resume</button></div></form></>}
- {step===4&&<div className={styles.complete}><p className='eyebrow'>Foundation ready</p><h1>Your first career workspace is prepared.</h1><p className={styles.intro}>The Morning Brief will use only the information currently stored in Kall and will show setup actions where data is still missing.</p><div className={styles.checklist}><div className={styles.check}><span>✓</span><div><b>Account created</b><p>Your private workspace is available.</p></div></div><div className={styles.check}><span>{profileCreated?'✓':'○'}</span><div><b>Career strategy</b><p>{profileCreated?'Your first direction is saved.':'Add a strategy from Career Profiles.'}</p></div></div><div className={styles.check}><span>{resumeUploaded?'✓':'○'}</span><div><b>Starting resume</b><p>{resumeUploaded?'Your resume is in Resume Studio.':'Upload one later from Resume Studio.'}</p></div></div></div><div className={styles.actions}><a className={`${styles.button} ${styles.secondary}`} href='/profiles'>Review strategy</a><button className={styles.button} onClick={finish}>Open Morning Brief</button></div></div>}
- <p className={styles.message} role='status'>{message}</p></section></div></main>;
+async function errorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const data = await response.json();
+    if (typeof data.detail === 'string') return data.detail;
+    if (Array.isArray(data.detail)) {
+      return data.detail.map((item: unknown) => JSON.stringify(item)).join(', ');
+    }
+  } catch {
+    // Preserve the user-facing fallback when the response is not JSON.
+  }
+  return fallback;
+}
+
+export default function Onboarding() {
+  const [step, setStep] = useState(2);
+  const [token, setToken] = useState('');
+  const [ready, setReady] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [profileCreated, setProfileCreated] = useState(false);
+  const [resumeUploaded, setResumeUploaded] = useState(false);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('kall_token');
+    if (!storedToken) {
+      window.location.replace('/register');
+      return;
+    }
+    setToken(storedToken);
+    setReady(true);
+  }, []);
+
+  async function createProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) return;
+
+    setMessage('');
+    setSubmitting(true);
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const response = await fetch(`${API}/me/professional-profiles`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: form.get('name'),
+          target_titles: csv(form.get('target_titles')),
+          industries: csv(form.get('industries')),
+          functional_areas: [],
+          include_keywords: csv(form.get('include_keywords')),
+          exclude_keywords: [],
+          countries: csv(form.get('countries')),
+          states_regions: csv(form.get('states_regions')),
+          work_types: csv(form.get('work_types')),
+          minimum_base: Number(form.get('minimum_base') || 0) || null,
+          target_base: Number(form.get('target_base') || 0) || null,
+          stretch_base: null,
+          minimum_total_comp: null,
+          target_total_comp: null,
+          default_resume_id: null,
+        }),
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
+      if (!response.ok) {
+        setMessage(await errorMessage(response, 'Could not create your career strategy.'));
+        return;
+      }
+
+      setProfileCreated(true);
+      setStep(3);
+    } catch {
+      setMessage('Kall could not save your strategy. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function uploadResume(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) return;
+
+    setMessage('');
+    setSubmitting(true);
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const response = await fetch(`${API}/me/resumes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('kall_token');
+        window.location.replace('/login');
+        return;
+      }
+      if (!response.ok) {
+        setMessage(await errorMessage(response, 'Resume upload failed.'));
+        return;
+      }
+
+      setResumeUploaded(true);
+      setStep(4);
+    } catch {
+      setMessage('Kall could not upload your resume. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!ready) {
+    return (
+      <main className={styles.shell}>
+        <section className={styles.panel}>
+          <p className={styles.intro}>Preparing your Kall workspace…</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className={styles.shell}>
+      <div className={styles.layout}>
+        <aside className={styles.aside}>
+          <div className={styles.brand}>Kall</div>
+          <div className={styles.steps}>
+            {[
+              ['Account', 'Your private career workspace'],
+              ['Strategy', 'Where you want to go'],
+              ['Resume', 'What you have built'],
+            ].map((item, index) => {
+              const number = index + 1;
+              return (
+                <div
+                  key={item[0]}
+                  className={`${styles.step} ${step === number ? styles.active : ''} ${step > number ? styles.done : ''}`}
+                >
+                  <strong>{step > number ? '✓' : number}</strong>
+                  <div>
+                    <b>{item[0]}</b>
+                    <small>{item[1]}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        <section className={styles.panel}>
+          {step === 2 && (
+            <>
+              <p className="eyebrow">Career strategy</p>
+              <h1>Where do you want your career to go?</h1>
+              <p className={styles.intro}>
+                Your account is ready. Start with one focused direction; you can add more strategies later.
+              </p>
+              <form className={styles.form} onSubmit={createProfile}>
+                <input className={styles.input} name="name" placeholder="Strategy name, e.g. Quality Leadership" required />
+                <textarea className={styles.input} name="target_titles" rows={4} placeholder="Target titles, comma separated" required />
+                <input className={styles.input} name="industries" placeholder="Industries, comma separated" />
+                <input className={styles.input} name="include_keywords" placeholder="Important keywords, comma separated" />
+                <div className={styles.two}>
+                  <input className={styles.input} name="countries" placeholder="Countries" />
+                  <input className={styles.input} name="states_regions" placeholder="States or regions" />
+                </div>
+                <input className={styles.input} name="work_types" defaultValue="remote, hybrid" placeholder="Work modes" />
+                <div className={styles.two}>
+                  <input className={styles.input} name="minimum_base" type="number" placeholder="Minimum base" />
+                  <input className={styles.input} name="target_base" type="number" placeholder="Target base" />
+                </div>
+                <div className={styles.actions}>
+                  <span />
+                  <button type="submit" className={styles.button} disabled={submitting}>
+                    {submitting ? 'Saving…' : 'Save strategy'}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <p className="eyebrow">Resume Studio</p>
+              <h1>Add the resume Kall should understand first.</h1>
+              <p className={styles.intro}>
+                Kall extracts the document text and keeps the original source. You can organize versions later.
+              </p>
+              <form className={styles.form} onSubmit={uploadResume}>
+                <input className={styles.input} type="file" name="file" accept=".pdf,.docx" required />
+                <div className={styles.note}>
+                  Use a factual, current resume. Kall will not invent qualifications or silently change source facts.
+                </div>
+                <div className={styles.actions}>
+                  <button type="button" className={`${styles.button} ${styles.secondary}`} onClick={() => setStep(4)}>
+                    Skip for now
+                  </button>
+                  <button type="submit" className={styles.button} disabled={submitting}>
+                    {submitting ? 'Uploading…' : 'Upload resume'}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {step === 4 && (
+            <div className={styles.complete}>
+              <p className="eyebrow">Foundation ready</p>
+              <h1>Your first career workspace is prepared.</h1>
+              <p className={styles.intro}>
+                The Morning Brief will use only the information currently stored in Kall.
+              </p>
+              <div className={styles.checklist}>
+                <div className={styles.check}>
+                  <span>✓</span>
+                  <div><b>Account created</b><p>Your private workspace is available.</p></div>
+                </div>
+                <div className={styles.check}>
+                  <span>{profileCreated ? '✓' : '○'}</span>
+                  <div><b>Career strategy</b><p>{profileCreated ? 'Your first direction is saved.' : 'Add a strategy from Career Profiles.'}</p></div>
+                </div>
+                <div className={styles.check}>
+                  <span>{resumeUploaded ? '✓' : '○'}</span>
+                  <div><b>Starting resume</b><p>{resumeUploaded ? 'Your resume is in Resume Studio.' : 'Upload one later from Resume Studio.'}</p></div>
+                </div>
+              </div>
+              <div className={styles.actions}>
+                <a className={`${styles.button} ${styles.secondary}`} href="/profiles">Review strategy</a>
+                <a className={styles.button} href="/morning-brief">Open Morning Brief</a>
+              </div>
+            </div>
+          )}
+
+          <p className={styles.message} role="status" aria-live="polite">{message}</p>
+        </section>
+      </div>
+    </main>
+  );
 }
