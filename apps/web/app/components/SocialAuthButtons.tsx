@@ -6,7 +6,6 @@ const providers = [
   ['google', 'Google'],
   ['linkedin', 'LinkedIn'],
   ['github', 'GitHub'],
-  ['microsoft', 'Microsoft'],
 ] as const;
 
 export default function SocialAuthButtons() {
