@@ -4,11 +4,48 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from sqlmodel import Session, select
 
-from kall.auth import bearer_token, create_session, get_current_user, hash_secret, new_one_time_token, password_hash, revoke_session, utcnow, verify_password
+from kall.auth import (
+    bearer_token,
+    create_session,
+    get_current_user,
+    hash_secret,
+    new_one_time_token,
+    password_hash,
+    revoke_session,
+    utcnow,
+    verify_password,
+)
 from kall.config import get_settings
 from kall.db import get_session
-from kall.models import Application, CandidateProfile, CareerProfile, Job, JobMatch, ResumeDocument, SearchRun, SearchSource, User, UserCredential, UserSession
-from kall.schemas import ApproveApplicationRequest, AuthResponse, EmailVerificationConfirm, IdentityProfileUpdate, JobCreate, LoginRequest, LogoutResponse, PasswordResetConfirm, PasswordResetRequest, PrepareApplicationRequest, ProfessionalProfileCreate, RegisterRequest, ResumeMetadataUpdate, SearchSourceCreate
+from kall.models import (
+    Application,
+    CandidateProfile,
+    CareerProfile,
+    Job,
+    JobMatch,
+    ResumeDocument,
+    SearchRun,
+    SearchSource,
+    User,
+    UserCredential,
+    UserSession,
+)
+from kall.schemas import (
+    ApproveApplicationRequest,
+    AuthResponse,
+    EmailVerificationConfirm,
+    IdentityProfileUpdate,
+    JobCreate,
+    LoginRequest,
+    LogoutResponse,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    PrepareApplicationRequest,
+    ProfessionalProfileCreate,
+    RegisterRequest,
+    ResumeMetadataUpdate,
+    SearchSourceCreate,
+)
 from kall.security import encrypt_sensitive
 from kall.services.applications import approve_application, prepare_application
 from kall.services.billing import create_checkout_url

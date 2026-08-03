@@ -3,8 +3,6 @@ import re
 from collections import Counter
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, select
-
 from kall.models import (
     CareerGoal,
     DiscoverySchedule,
@@ -12,9 +10,9 @@ from kall.models import (
     Job,
     JobRequirementAnalysis,
     NotificationDelivery,
-    NotificationPreference,
     Opportunity,
 )
+from sqlmodel import Session, select
 
 
 def normalize(value: str | None) -> str:

@@ -52,6 +52,13 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = [
+  "B008",  # FastAPI Depends() as default argument is intentional
+  "E501",  # Line length enforced by formatter, not linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/kall/models/__init__.py" = ["F403"]  # Re-export module uses wildcard imports by design
 
 [tool.mypy]
 python_version = "3.12"

@@ -38,7 +38,10 @@ class PreferenceInput(BaseModel):
 def create_schedule(payload: ScheduleInput, current: User = Depends(get_current_user), session: Session = Depends(get_session)):
     row = DiscoverySchedule(user_id=current.id, **payload.model_dump(exclude={"hour_local"}))
     row.run_at_local = datetime.min.replace(hour=payload.hour_local).time()
-    session.add(row); session.commit(); session.refresh(row); return row
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 @router.get("/opportunities", response_model=list[Opportunity])
@@ -55,15 +58,26 @@ def update_opportunity(opportunity_id: int, payload: OpportunityUpdate, current:
     if not row or row.user_id != current.id:
         raise HTTPException(404, "Opportunity not found")
     if payload.state:
-        try: mark_state(row, payload.state)
-        except ValueError as exc: raise HTTPException(422, str(exc)) from exc
-    if payload.notes is not None: row.notes = payload.notes
-    session.add(row); session.commit(); session.refresh(row); return row
+        try:
+            mark_state(row, payload.state)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    if payload.notes is not None:
+        row.notes = payload.notes
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 @router.put("/notification-preferences", response_model=NotificationPreference)
 def set_preferences(payload: PreferenceInput, current: User = Depends(get_current_user), session: Session = Depends(get_session)):
     row = session.exec(select(NotificationPreference).where(NotificationPreference.user_id == current.id)).first()
-    if not row: row = NotificationPreference(user_id=current.id)
-    for key, value in payload.model_dump().items(): setattr(row, key, value)
-    session.add(row); session.commit(); session.refresh(row); return row
+    if not row:
+        row = NotificationPreference(user_id=current.id)
+    for key, value in payload.model_dump().items():
+        setattr(row, key, value)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row

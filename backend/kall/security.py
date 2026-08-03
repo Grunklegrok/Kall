@@ -1,6 +1,8 @@
 import base64
 import hashlib
+
 from cryptography.fernet import Fernet, InvalidToken
+
 from kall.config import get_settings
 
 

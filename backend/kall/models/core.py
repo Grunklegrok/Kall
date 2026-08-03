@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from typing import Any
-from sqlmodel import Field, JSON, Column, SQLModel
+
+from sqlmodel import JSON, Column, Field, SQLModel
+
 from kall.models.enums import ApplicationStatus, PrivacyScope, SubscriptionPlan, WorkType
 
 

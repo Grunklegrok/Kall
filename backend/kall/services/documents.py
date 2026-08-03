@@ -1,15 +1,10 @@
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 
 from docx import Document
-from reportlab.lib.pagesizes import LETTER
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-from sqlmodel import Session, select
-
 from kall.models import (
     CoverLetterChange,
     CoverLetterProposal,
@@ -22,6 +17,10 @@ from kall.models import (
     TailoringChange,
     TailoringProposal,
 )
+from reportlab.lib.pagesizes import LETTER
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from sqlmodel import Session, select
 
 GENERATION_VERSION = "documents-v1"
 

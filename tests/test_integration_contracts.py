@@ -1,7 +1,6 @@
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlmodel import SQLModel
-
+from fastapi.routing import APIRoute
 from kall.main import app
 from kall.models import CareerGoal
 from kall.router_registry import API_ROUTERS
@@ -9,7 +8,7 @@ from kall.services.opportunities import analyze_growth_market
 
 
 def test_router_registry_is_complete() -> None:
-    paths = {route.path for route in app.routes}
+    paths = _app_paths()
     expected = {
         "/api/testimonials/requests",
         "/api/testimonials/profile-card",

@@ -1,8 +1,8 @@
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
 from kall.models import Application
 from kall.models.enums import ApplicationStatus
 from kall.services.applications import approve_application
+from sqlmodel import Session, SQLModel, create_engine
 
 
 def test_sensitive_application_requires_confirmation() -> None:

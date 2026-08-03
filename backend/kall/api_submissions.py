@@ -5,7 +5,12 @@ from kall.auth import get_current_user
 from kall.db import get_session
 from kall.models import Application, ApplicationSubmission, SubmissionAttempt, User
 from kall.services.billing import assert_submission_allowed
-from kall.services.submissions import confirm_submission, create_attempt, prepare_submission, validate_submission
+from kall.services.submissions import (
+    confirm_submission,
+    create_attempt,
+    prepare_submission,
+    validate_submission,
+)
 
 router = APIRouter(tags=["submissions"])
 

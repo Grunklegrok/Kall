@@ -1,10 +1,11 @@
 from datetime import datetime
 from pathlib import Path
-from sqlmodel import Session
+
 from kall.models import Application, CareerProfile, Job, ResumeDocument, User
 from kall.models.enums import ApplicationStatus
 from kall.services.quota import assert_application_allowed
 from kall.services.resume import extract_resume_text
+from sqlmodel import Session
 
 
 def prepare_application(

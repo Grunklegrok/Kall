@@ -7,7 +7,15 @@ from sqlmodel import Session, select
 
 from kall.auth import get_current_user
 from kall.db import get_session
-from kall.models import Application, CandidateProfile, CareerProfile, Job, JobMatch, ResumeDocument, User
+from kall.models import (
+    Application,
+    CandidateProfile,
+    CareerProfile,
+    Job,
+    JobMatch,
+    ResumeDocument,
+    User,
+)
 
 router = APIRouter(tags=["morning-brief"])
 

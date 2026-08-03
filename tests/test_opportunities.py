@@ -1,7 +1,12 @@
 from datetime import datetime, timedelta
 
 from kall.models import DiscoverySchedule, Job, Opportunity
-from kall.services.opportunities import canonical_key, due_schedule, mark_state, material_fingerprint
+from kall.services.opportunities import (
+    canonical_key,
+    due_schedule,
+    mark_state,
+    material_fingerprint,
+)
 
 
 def sample_job() -> Job:

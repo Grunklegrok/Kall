@@ -3,10 +3,9 @@
 Revision ID: 20260802_0005
 Revises: 20260802_0004
 """
+import kall.models  # noqa: F401
 from alembic import op
 from sqlmodel import SQLModel
-
-import kall.models  # noqa: F401
 
 revision = "20260802_0005"
 down_revision = "20260802_0004"

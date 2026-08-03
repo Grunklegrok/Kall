@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -106,7 +106,7 @@ def override_resume_selection(
         )
     selection.selected_resume_id = resume.id
     selection.selection_source = "user_override"
-    selection.selected_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    selection.selected_at = datetime.now(UTC).replace(tzinfo=None)
     session.add(selection)
     session.commit()
     session.refresh(selection)
