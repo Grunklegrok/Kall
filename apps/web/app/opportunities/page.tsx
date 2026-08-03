@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '/api/kall';
 
 type Opportunity = {
   id: number;
@@ -19,21 +19,44 @@ export default function OpportunitiesPage() {
 
   async function load(state = '') {
     const token = localStorage.getItem('kall_token');
-    const response = await fetch(`${API}/api/opportunities${state ? `?state=${state}` : ''}`, {
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
+    const response = await fetch(`${API}/opportunities${state ? `?state=${state}` : ''}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.ok) setItems(await response.json());
+    if (response.status === 401) {
+      localStorage.removeItem('kall_token');
+      window.location.replace('/login');
+      return;
+    }
+    if (response.ok) {
+      setItems(await response.json());
+      setMessage('');
+    } else {
+      setMessage('Unable to load opportunities.');
+    }
   }
 
   useEffect(() => { void load(); }, []);
 
   async function changeState(id: number, state: string) {
     const token = localStorage.getItem('kall_token');
-    const response = await fetch(`${API}/api/opportunities/${id}`, {
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
+    const response = await fetch(`${API}/opportunities/${id}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ state }),
     });
+    if (response.status === 401) {
+      localStorage.removeItem('kall_token');
+      window.location.replace('/login');
+      return;
+    }
     setMessage(response.ok ? 'Opportunity updated.' : 'Unable to update opportunity.');
     if (response.ok) await load();
   }
@@ -41,8 +64,12 @@ export default function OpportunitiesPage() {
   async function saveSchedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const token = localStorage.getItem('kall_token');
+    if (!token) {
+      window.location.replace('/login');
+      return;
+    }
     const form = new FormData(event.currentTarget);
-    const response = await fetch(`${API}/api/discovery/schedules`, {
+    const response = await fetch(`${API}/discovery/schedules`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -53,6 +80,11 @@ export default function OpportunitiesPage() {
         max_posting_age_days: Number(form.get('age_days')),
       }),
     });
+    if (response.status === 401) {
+      localStorage.removeItem('kall_token');
+      window.location.replace('/login');
+      return;
+    }
     setMessage(response.ok ? 'Discovery schedule saved.' : 'Unable to save schedule.');
   }
 
