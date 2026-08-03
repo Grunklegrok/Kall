@@ -13,6 +13,7 @@ from kall.api_match_intelligence import router as match_intelligence_router
 from kall.api_opportunities import router as opportunities_router
 from kall.api_ops import router as operations_router
 from kall.api_resume_intelligence import router as resume_intelligence_router
+from kall.api_resumes import router as resumes_router
 from kall.api_search_apply import router as search_apply_router
 from kall.api_security import router as security_router
 from kall.api_submissions import router as submissions_router
@@ -26,6 +27,7 @@ API_ROUTERS = (
     brief_router,
     applications_router,
     career_profiles_router,
+    resumes_router,
     application_review_router,
     testimonials_router,
     profile_router,
