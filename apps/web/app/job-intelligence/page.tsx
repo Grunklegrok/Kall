@@ -1,8 +1,9 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import ProfessionalProfileSelect from '../components/ProfessionalProfileSelect';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '/api/kall';
 
 type Score = {
   resume_id: number;
@@ -26,28 +27,27 @@ type Result = {
 };
 
 export default function JobIntelligencePage() {
+  const [profileId, setProfileId] = useState('');
+  const [jobId, setJobId] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   async function build(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profileId) {
+      setMessage('Create or select a professional profile first.');
+      return;
+    }
     setIsLoading(true);
     setMessage('Preparing match intelligence…');
 
     try {
       const token = localStorage.getItem('kall_token');
-      const form = new FormData(event.currentTarget);
-      const jobId = form.get('job_id');
-      const profileId = form.get('profile_id');
-
-      const run = await fetch(
-        `${API}/api/jobs/${jobId}/intelligence/${profileId}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const run = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!run.ok) {
         const detail = await run.json();
@@ -55,10 +55,9 @@ export default function JobIntelligencePage() {
         return;
       }
 
-      const response = await fetch(
-        `${API}/api/jobs/${jobId}/intelligence/${profileId}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         setMessage('The analysis ran, but the results could not be loaded.');
@@ -76,38 +75,22 @@ export default function JobIntelligencePage() {
 
   async function selectResume(resumeId: number) {
     const token = localStorage.getItem('kall_token');
-    const job = (
-      document.querySelector('[name=job_id]') as HTMLInputElement
-    ).value;
-    const profile = (
-      document.querySelector('[name=profile_id]') as HTMLInputElement
-    ).value;
-
-    const response = await fetch(
-      `${API}/api/jobs/${job}/intelligence/${profile}/selection`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ resume_id: resumeId }),
+    const response = await fetch(`${API}/jobs/${jobId}/intelligence/${profileId}/selection`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({ resume_id: resumeId }),
+    });
 
-    setMessage(
-      response.ok
-        ? `Resume ${resumeId} is now selected for this opportunity.`
-        : 'Kall could not save the resume selection.',
-    );
+    setMessage(response.ok ? `Resume ${resumeId} is now selected for this opportunity.` : 'Kall could not save the resume selection.');
   }
 
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="brand" href="/">
-          Kall
-        </a>
+        <a className="brand" href="/">Kall</a>
         <nav aria-label="Job intelligence navigation">
           <a href="/search">Opportunities</a>
           <a href="/resume-intelligence">Resume Studio</a>
@@ -116,52 +99,24 @@ export default function JobIntelligencePage() {
 
       <section className="hero" style={{ paddingTop: 8, paddingBottom: 42 }}>
         <span className="eyebrow">Opportunity review</span>
-        <h1 style={{ fontSize: 'clamp(44px, 7vw, 76px)' }}>
-          Compare your experience to the role.
-        </h1>
-        <p>
-          Kall evaluates each resume against the opportunity, explains the
-          evidence behind the score, and keeps the final selection in your
-          control.
-        </p>
+        <h1 style={{ fontSize: 'clamp(44px, 7vw, 76px)' }}>Compare your experience to the role.</h1>
+        <p>Kall evaluates each resume against the opportunity, explains the evidence behind the score, and keeps the final selection in your control.</p>
       </section>
 
       <section className="card" aria-labelledby="analysis-heading">
         <h2 id="analysis-heading">Build match intelligence</h2>
-        <p style={{ marginBottom: 20 }}>
-          Enter an existing job and professional profile. Kall will compare all
-          eligible resumes and verified achievements.
-        </p>
+        <p style={{ marginBottom: 20 }}>Select an existing job and professional profile. Kall will compare all eligible resumes and verified achievements.</p>
         <form className="form" onSubmit={build}>
           <div className="two">
             <label>
               <span className="muted">Job ID</span>
-              <input
-                className="input"
-                name="job_id"
-                inputMode="numeric"
-                placeholder="e.g. 128"
-                required
-              />
+              <input className="input" name="job_id" inputMode="numeric" value={jobId} onChange={(event) => setJobId(event.target.value)} placeholder="e.g. 128" required />
             </label>
-            <label>
-              <span className="muted">Professional profile ID</span>
-              <input
-                className="input"
-                name="profile_id"
-                inputMode="numeric"
-                placeholder="e.g. 42"
-                required
-              />
-            </label>
+            <ProfessionalProfileSelect value={profileId} onChange={setProfileId} />
           </div>
-          <button className="button" disabled={isLoading}>
-            {isLoading ? 'Preparing analysis…' : 'Build match intelligence'}
-          </button>
+          <button className="button" disabled={isLoading || !profileId}>{isLoading ? 'Preparing analysis…' : 'Build match intelligence'}</button>
         </form>
-        <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>
-          {message}
-        </p>
+        <p className="notice" aria-live="polite" style={{ marginTop: 16 }}>{message}</p>
       </section>
 
       {result && (
@@ -170,10 +125,7 @@ export default function JobIntelligencePage() {
             {Object.entries(result.coverage || {}).map(([key, value]) => (
               <article className="card" key={key}>
                 <h3>{key.replaceAll('_', ' ')}</h3>
-                <div className="metric">
-                  <strong>{value.covered}</strong>
-                  <span className="muted">of {value.total}</span>
-                </div>
+                <div className="metric"><strong>{value.covered}</strong><span className="muted">of {value.total}</span></div>
                 <p>profile signals covered</p>
               </article>
             ))}
@@ -181,43 +133,17 @@ export default function JobIntelligencePage() {
 
           <section aria-labelledby="resume-ranking-heading">
             <div className="section-heading">
-              <div>
-                <span className="eyebrow">Resume ranking</span>
-                <h2 id="resume-ranking-heading" style={{ marginTop: 14 }}>
-                  Evidence, not guesswork.
-                </h2>
-              </div>
-              <p>
-                Scores are accompanied by positive evidence and visible gaps so
-                you can review the recommendation before acting.
-              </p>
+              <div><span className="eyebrow">Resume ranking</span><h2 id="resume-ranking-heading" style={{ marginTop: 14 }}>Evidence, not guesswork.</h2></div>
+              <p>Scores are accompanied by positive evidence and visible gaps so you can review the recommendation before acting.</p>
             </div>
-
             <div className="stack">
               {result.scores.map((score, index) => (
                 <article className="card" key={score.resume_id}>
-                  <span className="pill">
-                    {index === 0 ? 'Recommended' : 'Candidate'}
-                  </span>
-                  <div className="metric">
-                    <strong>{score.total_score}%</strong>
-                    <span className="muted">Resume {score.resume_id}</span>
-                  </div>
-                  <p>
-                    {score.explanation.join(' · ') ||
-                      'No positive evidence is available yet.'}
-                  </p>
-                  <p style={{ marginTop: 14 }}>
-                    <strong style={{ color: 'var(--text)' }}>Gaps:</strong>{' '}
-                    {score.gaps.join(', ') || 'None detected'}
-                  </p>
-                  <button
-                    className="button secondary"
-                    style={{ marginTop: 20 }}
-                    onClick={() => selectResume(score.resume_id)}
-                  >
-                    Use this resume
-                  </button>
+                  <span className="pill">{index === 0 ? 'Recommended' : 'Candidate'}</span>
+                  <div className="metric"><strong>{score.total_score}%</strong><span className="muted">Resume {score.resume_id}</span></div>
+                  <p>{score.explanation.join(' · ') || 'No positive evidence is available yet.'}</p>
+                  <p style={{ marginTop: 14 }}><strong style={{ color: 'var(--text)' }}>Gaps:</strong> {score.gaps.join(', ') || 'None detected'}</p>
+                  <button className="button secondary" style={{ marginTop: 20 }} onClick={() => selectResume(score.resume_id)}>Use this resume</button>
                 </article>
               ))}
             </div>
@@ -225,14 +151,8 @@ export default function JobIntelligencePage() {
 
           <section className="card">
             <span className="eyebrow">Verified evidence</span>
-            <div className="metric">
-              <strong>{result.achievement_matches.length}</strong>
-              <span className="muted">relevant achievements</span>
-            </div>
-            <p>
-              Only verified, accepted achievements are included in this match.
-              Rejected achievements remain excluded.
-            </p>
+            <div className="metric"><strong>{result.achievement_matches.length}</strong><span className="muted">relevant achievements</span></div>
+            <p>Only verified, accepted achievements are included in this match. Rejected achievements remain excluded.</p>
           </section>
         </div>
       )}
